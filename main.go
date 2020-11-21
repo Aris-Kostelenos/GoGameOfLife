@@ -47,7 +47,6 @@ func main() {
 
 	keyPresses := make(chan rune, 10)
 	events := make(chan gol.Event, 1000)
-	ol.Ru
-	gn(params, events, keyPresses)
+	gol.Run(params, events, keyPresses)
 	sdl.Start(params, events, keyPresses)
 }

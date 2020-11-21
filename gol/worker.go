@@ -49,7 +49,7 @@ func calculateNextState(p golParams, world [][]uint8) [][]uint8 {
 			if world[row][cell] == 0 {
 				if x == 3 {
 					world1[row][cell] = 255
-					p.events <- CellFlipped{255, util.Cell{cell, row}}
+					p.events <- CellFlipped{255, util.Cell{X: row, Y: cell}}
 				} else {
 					world1[row][cell] = 0
 				}
@@ -60,7 +60,7 @@ func calculateNextState(p golParams, world [][]uint8) [][]uint8 {
 					world1[row][cell] = 255
 				} else {
 					world1[row][cell] = 0
-					p.events <- CellFlipped{0, util.Cell{cell, row}}
+					p.events <- CellFlipped{0, util.Cell{X: row, Y: cell}}
 				}
 			}
 		}
@@ -74,7 +74,7 @@ func calculateAliveCells(p golParams, world [][]uint8) []util.Cell {
 	for row := range world {
 		for cell := range world[row] {
 			if world[cell][row] == 255 {
-				a = append(a, util.Cell{cell, row})
+				a = append(a, util.Cell{X: row, Y: cell})
 				k++
 			}
 		}

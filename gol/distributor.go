@@ -20,14 +20,18 @@ func distributor(p Params, c distributorChannels) {
 
 	// TODO: Create a 2D slice to store the world.
 	c.ioCommand <- ioInput
-	c.ioFilename <- "images/" + fmt.Sprintf("%vx%vx.pgm", p.ImageWidth, p.ImageHeight)
+	c.ioFilename <- fmt.Sprintf("%vx%v", p.ImageWidth, p.ImageHeight)
+
 	grid := make([][]uint8, p.ImageHeight)
 	for row := 0; row < p.ImageHeight; row++ {
+		thisRow := make([]uint8, p.ImageWidth)
 		for cell := 0; cell < p.ImageWidth; cell++ {
 			value := <-c.ioInput
-			grid[row][cell] = value
+			thisRow[cell] = value
+			// grid[row][cell] = value
 			c.events <- CellFlipped{0, util.Cell{cell, row}}
 		}
+		grid[row] = thisRow
 	}
 	// TODO: For all initially alive cells send a CellFlipped Event.
 

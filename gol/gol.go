@@ -31,8 +31,8 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 		command:  ioCommand,
 		idle:     ioIdle,
 		filename: ioFilename,
-		output:   ioInput,
-		input:    ioOutput,
+		output:   ioOutput,
+		input:    ioInput,
 	}
 	go startIo(p, ioChannels)
 }
