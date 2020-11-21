@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"runtime"
+
 	"uk.ac.bris.cs/gameoflife/gol"
 	"uk.ac.bris.cs/gameoflife/sdl"
 )
 
 // main is the function called when starting Game of Life with 'go run .'
+
 func main() {
 	runtime.LockOSThread()
 	var params gol.Params
@@ -45,7 +47,7 @@ func main() {
 
 	keyPresses := make(chan rune, 10)
 	events := make(chan gol.Event, 1000)
-
-	gol.Run(params, events, keyPresses)
+	ol.Ru
+	gn(params, events, keyPresses)
 	sdl.Start(params, events, keyPresses)
 }
