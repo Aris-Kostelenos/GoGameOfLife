@@ -29,7 +29,7 @@ func distributor(p Params, c distributorChannels) {
 			value := <-c.ioInput
 			thisRow[cell] = value
 			// grid[row][cell] = value
-			c.events <- CellFlipped{0, util.Cell{cell, row}}
+			c.events <- CellFlipped{0, util.Cell{X: cell, Y: row}}
 		}
 		grid[row] = thisRow
 	}
