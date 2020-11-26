@@ -1,15 +1,8 @@
 package gol
 
 import (
-	"time"
-
 	"uk.ac.bris.cs/gameoflife/util"
 )
-
-type borders struct {
-	top    []uint8
-	bottom []uint8
-}
 
 func calculateNextState(p workerParams, world [][]uint8, borders borders) [][]uint8 {
 	oldWorld := make([][]uint8, p.imagePartWidth+2)
@@ -164,65 +157,27 @@ func calculateAliveCells(p workerParams, world [][]uint8) []util.Cell {
 	return a
 }
 
-func workerGoroutine(p workerParams, world [][]uint8, channels []chan uint8, statusChannel []chan bool) {
+func workerGoroutine(p workerParams, immPrevWorld func(row, cell int) uint8, nextWorld [][]uint8) {
 
-
-	gridPart := make([][]uint8, p.imagePartWidth)
-	for row := 0; row < p.imagePartHeight; row++ {
+	gridPart := make([][]uint8, p.imagePartHeigth+2)
+	for row := 0; row < p.imagePartHeight+2; row++ {
 		gridPart[row] = make([]uint8, p.imagePartWidth)
 		for cell := 0; cell < p.imagePartWidth; cell++ {
-			gridPart[row][cell] = world[row+p.imagePartWidthStartpoint][cell]
+			gridPart[row][cell] = immPrevWorld(row+p.imagePartHeightStartpoint-1, cell)
 		}
-	}
-
-	top := make([]uint8, p.imagePartHeight)
-	bottom := make([]uint8, p.imagePartHeight)
-	temp := borders{top, bottom}
-
-	for i := 0; i < p.imagePartHeight; i++ {
-
-		if p.id != 0 && p.id != p.threads-1 {
-			top[i] = world[p.imagePartWidthStartpoint-1][i]
-			bottom[i] = world[p.imagePartWidthStartpoint+p.imagePartWidth-1][i]
-		} else if p.id == 0 {
-			top[i] = world[(p.imagePartWidth*p.threads)-1][i]
-			bottom[i] = world[p.imagePartWidthStartpoint+p.imagePartWidth-1][i]
-		} else {
-			top[i] = world[p.imagePartWidthStartpoint-1][i]
-			bottom[i] = world[0][i]
-		}
-
 	}
 
 	for turns := 0; turns < p.turns; turns++ {
 		gridPart = calculateNextState(p, gridPart, temp)
-		time.Sleep(time.Millisecond)
-		statusChannel[p.id] <- true
 
-		//channels[2*p.id] <- gridPart[0]
-		//channels[2*p.id+1] <- gridPart[p.imagePartWidth]
-		//fmt.Println("I reached this point!")
 		if p.id != 0 && p.id != p.threads-1 {
-			sendUintSliceToChannel(p.imagePartHeight, channels[2*p.id], gridPart[0])
-			sendUintSliceToChannel(p.imagePartHeight, channels[2*p.id+1], gridPart[p.imagePartWidth])
-			copyUintSliceFromChannel(p.imagePartHeight, channels[2*p.id-1], top)
-			copyUintSliceFromChannel(p.imagePartHeight, channels[2*p.id+2], bottom)
+
 		} else if p.id == 0 && p.id == p.threads-1 {
-			sendUintSliceToChannel(p.imagePartHeight, channels[0], gridPart[0])
-			sendUintSliceToChannel(p.imagePartHeight, channels[1], gridPart[p.imagePartWidth-1])
-			time.Sleep(time.Millisecond)
-			copyUintSliceFromChannel(p.imagePartHeight, channels[1], top)
-			copyUintSliceFromChannel(p.imagePartHeight, channels[0], bottom)
+
 		} else if p.id == 0 {
-			//channels[2*p.id] <- gridPart[0]
-			//	channels[2*p.id+1] <- gridPart[p.imagePartWidth]
-			//	top = <-channels[p.threads]
-			//	bottom = <-channels[2]
+
 		} else {
-			//	channels[2*p.id] <- gridPart[0]
-			//	channels[2*p.id+1] <- gridPart[p.imagePartWidth]
-			//	top = <-channels[2*p.id-1]
-			//	bottom = <-channels[0]
+
 		}
 
 	}
@@ -234,16 +189,4 @@ func workerGoroutine(p workerParams, world [][]uint8, channels []chan uint8, sta
 	}
 	statusChannel[p.id] <- false
 
-}
-
-func copyUintSliceFromChannel(size int, channel chan uint8, slice []uint8) {
-	for i := 0; i < size; i++ {
-		slice[i] = <-channel
-	}
-}
-
-func sendUintSliceToChannel(size int, channel chan uint8, slice []uint8) {
-	for i := 0; i < size; i++ {
-		channel <- slice[i]
-	}
 }
