@@ -97,8 +97,15 @@ func distributor(p Params, c distributorChannels) {
 		}
 
 		c.events <- TurnComplete{turn}
-		prevWorld = nextWorld
-		fmt.Println("turn: ", turn, "complete!")
+		for row := range prevWorld {
+			for cell := range prevWorld[0] {
+				prevWorld[row][cell] = nextWorld[row][cell]
+			}
+		}
+
+		for i := 0; i < p.Threads; i++ {
+			syncChan[i] <- -1
+		}
 	}
 
 	ap := workerParams{0, c.events, 0, p.ImageWidth, p.ImageHeight, p.Turns, p.Threads}

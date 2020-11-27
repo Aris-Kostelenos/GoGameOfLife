@@ -104,6 +104,7 @@ func workerGoroutine(p workerParams, immPrevWorld func(row, cell int) uint8, nex
 		}
 
 		turnComplete[p.id] <- turns
+		<-turnComplete[p.id]
 
 	}
 }
