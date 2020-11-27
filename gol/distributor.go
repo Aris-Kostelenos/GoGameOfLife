@@ -54,10 +54,10 @@ func distributor(p Params, c distributorChannels) {
 		prevWorld[row] = make([]uint8, p.ImageWidth)
 		for cell := 0; cell < p.ImageWidth; cell++ {
 			prevWorld[row][cell] = <-c.ioInput
-			c.events <- CellFlipped{0, util.Celld{X: cell, Y: row}}
+			c.events <- CellFlipped{0, util.Cell{X: cell, Y: row}}
 		}
 	}
-	immPrevWorld := makeImmtutableMatrix(prevWorld)
+	immPrevWorld := makeImmutableMatrix(prevWorld)
 
 	// make a 2D grid for the next state of the world
 	nextWorld := make([][]uint8, p.ImageHeight)
@@ -69,22 +69,40 @@ func distributor(p Params, c distributorChannels) {
 	rowsPerSlice := p.ImageHeight / p.Threads
 	extra := p.ImageHeight % p.Threads
 
-	// run the game of life
-	for turn := 0; turn < p.Turns; turn++ {
-		for i := 0; i < p.Threads; i++ {
-			workerRows := rowsPerSlice
-			if extra > 0 {
-				workerRows++
-				extra--
-			}
-			// TODO: revise workerParams
-			wp := workerParams{i, c.events, 0, 0, p.ImageHeight, p.Turns, p.Threads}
-			wp.imagePartHeightStartpoint = i * wp.imagePartHeight
-			go workerGoroutine(wp, immPrevWorld, nextWorld)
+	syncChan := make([]chan int, p.Threads)
+	for i := 0; i < p.Threads; i++ {
+		workerRows := rowsPerSlice
+		if extra > 0 {
+			workerRows++
+			extra--
 		}
-		c.events <- TurnComplete{turn}
-		immPrevWorld = nextWorld
+		// TODO: revise workerParams
+		syncChan[i] = make(chan int)
+		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
+		wp := workerParams{i, c.events, 0, p.ImageWidth, rowsPerSlice, p.Turns, p.Threads}
+		wp.imagePartHeightStartpoint = i * wp.imagePartHeight
+		go workerGoroutine(wp, immPrevWorld, nextWorld, syncChan)
 	}
+
+	var turn int
+	// run the game of life
+	for turn = 0; turn < p.Turns; turn++ {
+		for i := 0; i < p.Threads; i++ {
+			x := <-syncChan[i]
+			if x != turn {
+				//TODO: send an error
+			} else {
+				//
+			}
+		}
+
+		c.events <- TurnComplete{turn}
+		prevWorld = nextWorld
+		fmt.Println("turn: ", turn, "complete!")
+	}
+
+	ap := workerParams{0, c.events, 0, p.ImageWidth, p.ImageHeight, p.Turns, p.Threads}
+
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(ap, prevWorld)}
 
 	// TODO: Send correct Events when required, e.g. CellFlipped, TurnComplete and FinalTurnComplete.
