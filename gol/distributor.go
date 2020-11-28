@@ -47,6 +47,32 @@ func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
 	return prevWorld
 }
 
+// func makeWorkers() {
+// 	for i := 0; i < p.Threads; i++ {
+
+// 		//since we iterate over p.Threads we may as well initialise the channels.
+// 		wc.syncChan[i] = make(chan int)
+// 		wc.confChan[i] = make(chan bool)
+
+// 		workerRows := rowsPerSlice
+// 		if extra > 0 {
+// 			workerRows++
+// 			extra--
+// 		}
+// 		// TODO: revise workerParams
+
+// 		//id is literally the number of the channel counting from 0.
+// 		wp.id = i
+// 		wp.imagePartHeight = workerRows
+// 		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
+// 		go workerGoroutine(wp, wc)
+
+// 		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
+// 		wp.offset += workerRows
+
+// 	}
+// }
+
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
@@ -96,7 +122,8 @@ func distributor(p Params, c distributorChannels) {
 	}
 
 	tickerTurns := make(chan int)
-	go startTicker(c.events, prevWorld, tickerTurns)
+	stopTicker := make(chan bool)
+	go startTicker(c.events, prevWorld, tickerTurns, stopTicker)
 
 	var turn int
 	// run the game of life
@@ -123,7 +150,7 @@ func distributor(p Params, c distributorChannels) {
 		// update the ticker
 		tickerTurns <- turn
 	}
-
+	stopTicker <- true
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
 
 	// TODO: Send correct Events when required, e.g. CellFlipped, TurnComplete and FinalTurnComplete.

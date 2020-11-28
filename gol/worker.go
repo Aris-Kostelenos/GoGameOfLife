@@ -110,13 +110,14 @@ func workerGoroutine(p workerParams, c workerChannels) {
 			for cell := 0; cell < p.imagePartWidth; cell++ {
 				actualRow := p.offset - 1 + row
 				//gridPart[row][cell] = (*p.prevWorld)[p.offset-1+row][cell]
-				if actualRow >= 0 && actualRow < p.imageHeight-1 {
+				if actualRow >= 0 && actualRow < p.imageHeight {
 					gridPart[row][cell] = (*p.prevWorld)[actualRow][cell]
 				} else if actualRow == -1 {
 					gridPart[row][cell] = (*p.prevWorld)[p.imageHeight-1][cell]
 				} else if actualRow == p.imageHeight {
 					gridPart[row][cell] = (*p.prevWorld)[0][cell]
 				} else {
+
 					fmt.Println("error!")
 				}
 			}

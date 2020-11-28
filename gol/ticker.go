@@ -2,17 +2,20 @@ package gol
 
 import "time"
 
-func startTicker(events chan<- Event, prevWorld [][]uint8, turns chan int) {
-	c := time.Tick(2 * time.Second)
+func startTicker(events chan<- Event, prevWorld [][]uint8, turns chan int, stop chan bool) {
+	ticker := time.NewTicker(2 * time.Second)
 	turn := 0
-	for range c {
+	for {
 		select {
+		case <-stop:
+			ticker.Stop()
 		case value := <-turns:
 			turn = value
+		case <-ticker.C:
+			alive := len(calculateAliveCells(prevWorld))
+			events <- AliveCellsCount{turn, alive}
 		default:
 			break
 		}
-		alive := len(calculateAliveCells(prevWorld))
-		events <- AliveCellsCount{turn, alive}
 	}
 }
