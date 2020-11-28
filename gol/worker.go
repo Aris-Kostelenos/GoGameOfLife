@@ -69,7 +69,7 @@ func calculateNextState(p workerParams, world [][]uint8, events chan<- Event) []
 					world1[row][cell] = 255
 				} else {
 					world1[row][cell] = 0
-					p.events <- CellFlipped{0, util.Cell{X: row, Y: cell}}
+					events <- CellFlipped{0, util.Cell{X: row, Y: cell}}
 				}
 			}
 		}
@@ -113,11 +113,10 @@ func workerGoroutine(p workerParams, c workerChannels) {
 				if actualRow >= 0 && actualRow < p.imageHeight-1 {
 					gridPart[row][cell] = (*p.prevWorld)[actualRow][cell]
 				} else if actualRow == -1 {
-					gridPart[row][cell] = (*p.prevWorld)[p.imageHeight-1]
+					gridPart[row][cell] = (*p.prevWorld)[p.imageHeight-1][cell]
 				} else if actualRow == p.imageHeight {
 					gridPart[row][cell] = (*p.prevWorld)[0][cell]
 				} else {
-					return 0
 					fmt.Println("error!")
 				}
 			}
