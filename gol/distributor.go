@@ -25,6 +25,7 @@ type workerParams struct {
 	threads                   int
 }
 
+//this function includes some logic that gives the bottom row (len(matrix-1)) when asked for row -1 and gives the first row (0) when asked for row (len(matrix))
 func makeImmutableMatrix(matrix [][]uint8) func(row, cell int) uint8 {
 	return func(row, cell int) uint8 {
 		if row >= 0 && row < len(matrix) {
@@ -67,26 +68,44 @@ func distributor(p Params, c distributorChannels) {
 
 	// determine how to allocate rows to workers
 	rowsPerSlice := p.ImageHeight / p.Threads
+	fmt.Println("->", rowsPerSlice)
 	extra := p.ImageHeight % p.Threads
 
+	//syncChan and confChan are used for synchronisation of the distributor and workers.
 	syncChan := make([]chan int, p.Threads)
+	confChan := make([]chan bool, p.Threads)
+
+	//wp is defined outside the loop it is passed by value to each worker.
+	wp := workerParams{0, c.events, 0, p.ImageWidth, 0, p.Turns, p.Threads}
+
 	for i := 0; i < p.Threads; i++ {
+
+		//since we iterate over p.Threads we may as well initialise the channels.
+		syncChan[i] = make(chan int)
+		confChan[i] = make(chan bool)
+
 		workerRows := rowsPerSlice
 		if extra > 0 {
 			workerRows++
 			extra--
 		}
 		// TODO: revise workerParams
-		syncChan[i] = make(chan int)
+
+		//id is literally the number of the channel counting from 0.
+		wp.id = i
+		wp.imagePartHeight = workerRows
 		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
-		wp := workerParams{i, c.events, 0, p.ImageWidth, rowsPerSlice, p.Turns, p.Threads}
-		wp.imagePartHeightStartpoint = i * wp.imagePartHeight
-		go workerGoroutine(wp, immPrevWorld, nextWorld, syncChan)
+		go workerGoroutine(wp, immPrevWorld, nextWorld, syncChan, confChan)
+
+		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
+		wp.imagePartHeightStartpoint += workerRows
+
 	}
 
 	var turn int
 	// run the game of life
 	for turn = 0; turn < p.Turns; turn++ {
+		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-syncChan[i]
 			if x != turn {
@@ -96,6 +115,10 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 
+		//transfer the state of each cell of nextWorld to prevWorld. It is important that this is done because prevWorld is the only pointer that the workers have
+		//in order to find out the previous turn. Doing prevWorld = nextWorld would change the pointer for distributor but leave the workers in the dark
+		//a channel could give the workers the pointer to the new matrix for a possibly speedier approach
+
 		c.events <- TurnComplete{turn}
 		for row := range prevWorld {
 			for cell := range prevWorld[0] {
@@ -103,8 +126,9 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 
+		//after prevWorld is updated the workers are notified to continue their work.
 		for i := 0; i < p.Threads; i++ {
-			syncChan[i] <- -1
+			confChan[i] <- true
 		}
 	}
 

@@ -4,52 +4,58 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
+//The calculateNextState function is a copy of the function of the first lab with minimal changes. The most notable is the +2 next to p.imagePartHeight
+//This function receives and outputs 1 extra row at the top and one at the bottom than it would have needed. It can be optimised in that regard.
+//Additionally it makes a new board for every turn , while it could instead edit the board the worker is given.
+
 func calculateNextState(p workerParams, world [][]uint8) [][]uint8 {
 	world1 := make([][]uint8, p.imagePartHeight+2)
-	for z := 0; z < p.imagePartHeight+2; z++ {
-		world1[z] = make([]uint8, p.imagePartWidth)
+	for row := 0; row < p.imagePartHeight+2; row++ {
+		world1[row] = make([]uint8, p.imagePartWidth)
 	}
 	for row := range world {
 		for cell := range world[row] {
-			var a int
-			var b int
-			var c int
-			var d int
+			var left int
+			var right int
+			var top int
+			var bottom int
 
 			if cell == 0 {
-				a = p.imagePartWidth - 1
+				left = p.imagePartWidth - 1
 			} else {
-				a = cell - 1
+				left = cell - 1
 			}
 			if row == 0 {
-				c = p.imagePartHeight + 1
+				top = p.imagePartHeight + 1
 			} else {
-				c = row - 1
+				top = row - 1
 			}
 			if cell == p.imagePartWidth-1 {
-				b = 0
+				right = 0
 			} else {
-				b = cell + 1
+				right = cell + 1
 			}
 			if row == p.imagePartHeight+1 {
-				d = 0
+				bottom = 0
 			} else {
-				d = row + 1
+				bottom = row + 1
 			}
 			var x uint8
-			x += world[c][a] / 255
-			x += world[c][cell] / 255
-			x += world[row][a] / 255
-			x += world[c][b] / 255
-			x += world[row][b] / 255
-			x += world[d][a] / 255
-			x += world[d][cell] / 255
-			x += world[d][b] / 255
+
+			x += world[top][left] / 255
+			x += world[top][cell] / 255
+			x += world[top][right] / 255
+			x += world[row][left] / 255
+			x += world[row][right] / 255
+			x += world[bottom][left] / 255
+			x += world[bottom][cell] / 255
+			x += world[bottom][right] / 255
 
 			if world[row][cell] == 0 {
 				if x == 3 {
 					world1[row][cell] = 255
 					//p.events <- CellFlipped{255, util.Cell{X: row, Y: cell}}
+					// we will need to give the function the p.events channel for the cell flipped to be sent at appropriate times
 				} else {
 					world1[row][cell] = 0
 				}
@@ -68,6 +74,45 @@ func calculateNextState(p workerParams, world [][]uint8) [][]uint8 {
 	return world1
 }
 
+func workerGoroutine(p workerParams, immPrevWorld func(row, cell int) uint8, nextWorld [][]uint8, syncChan []chan int, confChan []chan bool) {
+
+	//makes a new grid
+	gridPart := make([][]uint8, p.imagePartHeight+2)
+	for row := 0; row < p.imagePartHeight+2; row++ {
+		gridPart[row] = make([]uint8, p.imagePartWidth)
+	}
+
+	// main loop that runs for all the turns
+	for turns := 0; turns < p.turns; turns++ {
+
+		//every turn it reads and copies the part of the prevWorld that is relevant to it.
+		//the +2 here again is because we need the info of the rows exactly above and below the rows the worker processes.
+		for row := 0; row < p.imagePartHeight+2; row++ {
+			for cell := 0; cell < p.imagePartWidth; cell++ {
+				gridPart[row][cell] = immPrevWorld(p.imagePartHeightStartpoint-1+row, cell)
+			}
+		}
+
+		//it then sends its board to the above function to do the calculations for one turn
+		gridPart = calculateNextState(p, gridPart)
+
+		//even though the local grid is 2 rows bigger, the top and bottom row are ommited when writing back to nextWorld
+		for row := 0; row < p.imagePartHeight; row++ {
+			for cell := 0; cell < p.imagePartWidth; cell++ {
+				nextWorld[row+p.imagePartHeightStartpoint][cell] = gridPart[row+1][cell]
+			}
+		}
+
+		//the worker sends the turn it is in as a signal to distributor to transfer the data of newWorld to oldWorld
+		syncChan[p.id] <- turns
+
+		//when the distributor is done it sends a bool value to the following channel. These channels act like a mutex lock basically.
+		<-confChan[p.id]
+
+	}
+}
+
+//the function from the first coursework with basically no differences.
 func calculateAliveCells(p workerParams, world [][]uint8) []util.Cell {
 	a := make([]util.Cell, 0)
 	k := 0
@@ -80,31 +125,4 @@ func calculateAliveCells(p workerParams, world [][]uint8) []util.Cell {
 		}
 	}
 	return a
-}
-
-func workerGoroutine(p workerParams, immPrevWorld func(row, cell int) uint8, nextWorld [][]uint8, turnComplete []chan int) {
-
-	gridPart := make([][]uint8, p.imagePartHeight+2)
-	for row := 0; row < p.imagePartHeight+2; row++ {
-		gridPart[row] = make([]uint8, p.imagePartWidth)
-	}
-
-	for turns := 0; turns < p.turns; turns++ {
-
-		for row := 0; row < p.imagePartHeight+2; row++ {
-			for cell := 0; cell < p.imagePartWidth; cell++ {
-				gridPart[row][cell] = immPrevWorld(p.imagePartHeightStartpoint-1+row, cell)
-			}
-		}
-		gridPart = calculateNextState(p, gridPart)
-		for row := 0; row < p.imagePartHeight; row++ {
-			for cell := 0; cell < p.imagePartWidth; cell++ {
-				nextWorld[row+p.imagePartHeightStartpoint][cell] = gridPart[row+1][cell]
-			}
-		}
-
-		turnComplete[p.id] <- turns
-		<-turnComplete[p.id]
-
-	}
 }
