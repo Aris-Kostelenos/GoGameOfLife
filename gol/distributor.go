@@ -47,6 +47,14 @@ func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
 	return prevWorld
 }
 
+func makeNextWorld(height int, width int) [][]uint8 {
+	nextWorld := make([][]uint8, height)
+	for row := 0; row < height; row++ {
+		nextWorld[row] = make([]uint8, width)
+	}
+	return nextWorld
+}
+
 // func makeWorkers() {
 // 	for i := 0; i < p.Threads; i++ {
 
@@ -82,7 +90,7 @@ func distributor(p Params, c distributorChannels) {
 
 	// make a 2D grid for the previous and next state of the world
 	prevWorld := makePrevWorld(p.ImageHeight, p.ImageWidth, c)
-	nextWorld := make([][]uint8, p.ImageHeight)
+	nextWorld := makeNextWorld(p.ImageHeight, p.ImageWidth)
 
 	// make a struct for worker channels
 	wc := workerChannels{}
@@ -121,17 +129,19 @@ func distributor(p Params, c distributorChannels) {
 
 	}
 
-	tickerTurns := make(chan int)
-	stopTicker := make(chan bool)
-	go startTicker(c.events, prevWorld, tickerTurns, stopTicker)
+	ds := state{}
+	ds.turns = make(chan int)
+	ds.stop = make(chan bool)
+	ds.previousWorld = make(chan [][]uint8)
+	ds.mutex = make(chan bool)
+	go startTicker(c.events, ds)
 
 	var turn int
 	// run the game of life
 	for turn = 0; turn < p.Turns; turn++ {
-		nextWorld = make([][]uint8, p.ImageHeight)
-		for i := 0; i < p.ImageHeight; i++ {
-			nextWorld[i] = make([]uint8, p.ImageWidth)
-		}
+
+		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+
 		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
@@ -142,15 +152,27 @@ func distributor(p Params, c distributorChannels) {
 
 		c.events <- TurnComplete{turn}
 
+		select {
+		case x := <-ds.mutex:
+			if x == true {
+				//fmt.Println("yin")
+				<-ds.mutex
+				//fmt.Println("yan")
+			}
+		default:
+			break
+		}
+
 		prevWorld = nextWorld
 
 		for i := 0; i < p.Threads; i++ {
 			wc.confChan[i] <- true
 		}
 		// update the ticker
-		tickerTurns <- turn
+		ds.turns <- turn
+		ds.previousWorld <- prevWorld
 	}
-	stopTicker <- true
+	ds.stop <- true
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
 
 	// TODO: Send correct Events when required, e.g. CellFlipped, TurnComplete and FinalTurnComplete.
