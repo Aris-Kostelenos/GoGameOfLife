@@ -140,8 +140,6 @@ func distributor(p Params, c distributorChannels) {
 	// run the game of life
 	for turn = 0; turn < p.Turns; turn++ {
 
-		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
-
 		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
@@ -151,6 +149,13 @@ func distributor(p Params, c distributorChannels) {
 		}
 
 		c.events <- TurnComplete{turn}
+
+		prevWorld = nextWorld
+		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+
+		for i := 0; i < p.Threads; i++ {
+			wc.confChan[i] <- true
+		}
 
 		select {
 		case x := <-ds.mutex:
@@ -163,15 +168,11 @@ func distributor(p Params, c distributorChannels) {
 			break
 		}
 
-		prevWorld = nextWorld
-
-		for i := 0; i < p.Threads; i++ {
-			wc.confChan[i] <- true
-		}
 		// update the ticker
 		ds.turns <- turn
 		ds.previousWorld <- prevWorld
 	}
+
 	ds.stop <- true
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
 

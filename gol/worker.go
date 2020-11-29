@@ -79,21 +79,6 @@ func calculateNextState(p workerParams, world [][]uint8, events chan<- Event) []
 
 func workerGoroutine(p workerParams, c workerChannels) {
 
-	//*(p.prevWorld)[row][cell]
-
-	/*
-		if row >= 0 && row < len(matrix) {
-			return matrix[row][cell]
-		} else if row == -1 {
-			return matrix[len(matrix)-1][cell]
-		} else if row == len(matrix) {
-			return matrix[0][cell]
-		} else {
-			return 0
-		}
-
-	*/
-
 	//makes a new grid
 	gridPart := make([][]uint8, p.imagePartHeight+2)
 	for row := 0; row < p.imagePartHeight+2; row++ {
