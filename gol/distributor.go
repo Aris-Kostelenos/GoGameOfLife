@@ -47,31 +47,30 @@ func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
 	return prevWorld
 }
 
-// func makeWorkers() {
-// 	for i := 0; i < p.Threads; i++ {
+func makeWorkers(numOfWorkers int, rowsPerSlice int, extra int, wc workerChannels, wp workerParams) {
+	for i := 0; i < numOfWorkers; i++ {
 
-// 		//since we iterate over p.Threads we may as well initialise the channels.
-// 		wc.syncChan[i] = make(chan int)
-// 		wc.confChan[i] = make(chan bool)
+		//
+		wc.syncChan[i] = make(chan int)
+		wc.confChan[i] = make(chan bool)
 
-// 		workerRows := rowsPerSlice
-// 		if extra > 0 {
-// 			workerRows++
-// 			extra--
-// 		}
-// 		// TODO: revise workerParams
+		workerRows := rowsPerSlice
+		if extra > 0 {
+			workerRows++
+			extra--
+		}
 
-// 		//id is literally the number of the channel counting from 0.
-// 		wp.id = i
-// 		wp.imagePartHeight = workerRows
-// 		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
-// 		go workerGoroutine(wp, wc)
+		//id is literally the number of the channel counting from 0.
+		wp.id = i
+		wp.imagePartHeight = workerRows
+		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
+		go workerGoroutine(wp, wc)
 
-// 		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
-// 		wp.offset += workerRows
+		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
+		wp.offset += workerRows
 
-// 	}
-// }
+	}
+}
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
@@ -127,6 +126,7 @@ func distributor(p Params, c distributorChannels) {
 
 	var turn int
 	// run the game of life
+
 	for turn = 0; turn < p.Turns; turn++ {
 		nextWorld = make([][]uint8, p.ImageHeight)
 		for i := 0; i < p.ImageHeight; i++ {
@@ -141,6 +141,13 @@ func distributor(p Params, c distributorChannels) {
 		}
 
 		c.events <- TurnComplete{turn}
+
+		select {
+		case <-pause:
+			<-pause
+		default:
+			break
+		}
 
 		prevWorld = nextWorld
 
