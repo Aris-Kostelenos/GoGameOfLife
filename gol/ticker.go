@@ -1,21 +1,38 @@
 package gol
 
-import "time"
+import (
+	"time"
+)
 
-func startTicker(events chan<- Event, prevWorld *[][]uint8, turns chan int, stop chan bool) {
+type state struct {
+	turns         chan int
+	previousWorld chan [][]uint8
+	stop          chan bool
+	mutex         chan bool
+}
+
+func startTicker(events chan<- Event, state state) {
 	ticker := time.NewTicker(2 * time.Second)
 	turn := 0
-	for {
+	var prevWorld [][]uint8
+	x := true
+	for x {
 		select {
-		case <-stop:
+		case <-state.stop:
 			ticker.Stop()
-		case value := <-turns:
-			turn = value
+			x = false
+		case value := <-state.turns:
+
+			turn = value + 1
+			prevWorld = <-state.previousWorld
+
 		case <-ticker.C:
-			pause <- true
-			alive := len(calculateAliveCells(*prevWorld))
+			state.mutex <- true
+			//fmt.Println("hi!")
+			alive := len(calculateAliveCells(prevWorld))
 			events <- AliveCellsCount{turn, alive}
-			pause <- false
+			//fmt.Println("hi again!")
+			state.mutex <- false
 		default:
 			break
 		}
