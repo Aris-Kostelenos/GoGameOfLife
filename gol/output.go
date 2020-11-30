@@ -2,21 +2,37 @@ package gol
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
+	"os"
+	"strconv"
 )
 
-func writeFile(grid [][]uint8, width, height, turns int) {
-	filename := "out/" + fmt.Sprintf("%vx%vx%v.pgm", width, height, turns)
-	header := "P5\n" + fmt.Sprintf("%d %d\n%d\n", width, height, 255)
-	content := []byte(header)
-	for row := 0; row < height; row++ {
-		for cell := 0; cell < width; cell++ {
-			content = append(content, byte(grid[row][cell]))
+func makeFile(imageHeight int, imageWidth int, world [][]byte, filename string) {
+	_ = os.Mkdir("out", os.ModePerm)
+	_ = os.Chdir("out")
+
+	file, _ := os.Create(filename)
+	//check(ioError)
+	defer file.Close()
+
+	_, _ = file.WriteString("P5\n")
+	//_, _ = file.WriteString("# PGM file writer by pnmmodules (https://github.com/owainkenwayucl/pnmmodules).\n")
+	_, _ = file.WriteString(strconv.Itoa(imageWidth))
+	_, _ = file.WriteString(" ")
+	_, _ = file.WriteString(strconv.Itoa(imageHeight))
+	_, _ = file.WriteString("\n")
+	_, _ = file.WriteString(strconv.Itoa(255))
+	_, _ = file.WriteString("\n")
+
+	for y := 0; y < imageHeight; y++ {
+		for x := 0; x < imageWidth; x++ {
+			_, _ = file.Write([]byte{world[y][x]})
+			//check(ioError)
 		}
 	}
-	err := ioutil.WriteFile(filename, content, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
+
+	//ioError = file.Sync()
+	//check(ioError)
+
+	fmt.Println("File", filename, "output done!")
+	_ = os.Chdir("..")
 }

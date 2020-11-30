@@ -142,7 +142,9 @@ func distributor(p Params, c distributorChannels) {
 	}
 
 	ds.stop <- true
-	writeFile(prevWorld, p.ImageWidth, p.ImageHeight, p.Turns)
+	//writeFile(prevWorld, p.ImageWidth, p.ImageHeight, p.Turns)
+	outputFilename := fmt.Sprintf("%vx%vx%v.pgm", p.ImageWidth, p.ImageHeight, turn)
+	makeFile(p.ImageHeight, p.ImageWidth, prevWorld, outputFilename)
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
 
 	// TODO: Send correct Events when required, e.g. CellFlipped, TurnComplete and FinalTurnComplete.
