@@ -152,7 +152,7 @@ func distributor(p Params, c distributorChannels) {
 	// run the game of life
 	var turn int
 	quit := false
-	for turn = 0; turn < p.Turns && quit = false; turn++ {
+	for turn = 0; turn < p.Turns && quit == false; turn++ {
 		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
@@ -166,7 +166,7 @@ func distributor(p Params, c distributorChannels) {
 		prevWorld = nextWorld
 		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
 
-				select {
+		select {
 		case x := <-c.keyPresses:
 			if x == 's' {
 				saveWorld(c, p, turn, prevWorld)
@@ -203,12 +203,11 @@ func distributor(p Params, c distributorChannels) {
 
 		// handle keyPresses
 
-
 		// update the ticker
 		ds.turns <- turn
 		ds.previousWorld <- prevWorld
 	}
-	
+
 	ds.stop <- true
 
 	// output the result to a file
