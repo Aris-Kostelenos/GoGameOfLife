@@ -47,7 +47,6 @@ func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
 	return prevWorld
 }
 
-
 func makeNextWorld(height int, width int) [][]uint8 {
 	nextWorld := make([][]uint8, height)
 	for row := 0; row < height; row++ {
@@ -56,28 +55,19 @@ func makeNextWorld(height int, width int) [][]uint8 {
 	return nextWorld
 }
 
-// func makeWorkers(numOfWorkers int, rowsPerSlice int, extra int, wc workerChannels, wp workerParams) {
-// 	for i := 0; i < numOfWorkers; i++ {
-
-		//
+func makeWorkers(numOfWorkers int, rowsPerSlice int, extra int, wc workerChannels, wp workerParams) {
+	for i := 0; i < numOfWorkers; i++ {
 		wc.syncChan[i] = make(chan int)
 		wc.confChan[i] = make(chan bool)
-
 		workerRows := rowsPerSlice
 		if extra > 0 {
 			workerRows++
 			extra--
 		}
-
-		//id is literally the number of the channel counting from 0.
 		wp.id = i
 		wp.imagePartHeight = workerRows
-		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
 		go workerGoroutine(wp, wc)
-
-		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
 		wp.offset += workerRows
-
 	}
 }
 
@@ -105,30 +95,9 @@ func distributor(p Params, c distributorChannels) {
 	rowsPerSlice := p.ImageHeight / p.Threads
 	extra := p.ImageHeight % p.Threads
 
-	for i := 0; i < p.Threads; i++ {
+	makeWorkers(p.Threads, rowsPerSlice, extra, wc, wp)
 
-		//since we iterate over p.Threads we may as well initialise the channels.
-		wc.syncChan[i] = make(chan int)
-		wc.confChan[i] = make(chan bool)
-
-		workerRows := rowsPerSlice
-		if extra > 0 {
-			workerRows++
-			extra--
-		}
-		// TODO: revise workerParams
-
-		//id is literally the number of the channel counting from 0.
-		wp.id = i
-		wp.imagePartHeight = workerRows
-		//TODO: make the workers and distributor communicate via channels instead of reading and writing to common matrices.
-		go workerGoroutine(wp, wc)
-
-		//the offset for the next worker is defined as the previous offset plus the number of rows of the previous worker
-		wp.offset += workerRows
-
-	}
-
+	// create a ticker
 	ds := state{}
 	ds.turns = make(chan int)
 	ds.stop = make(chan bool)
@@ -136,11 +105,9 @@ func distributor(p Params, c distributorChannels) {
 	ds.mutex = make(chan bool)
 	go startTicker(c.events, ds)
 
-	var turn int
 	// run the game of life
-
+	var turn int
 	for turn = 0; turn < p.Turns; turn++ {
-
 		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
@@ -150,13 +117,6 @@ func distributor(p Params, c distributorChannels) {
 		}
 
 		c.events <- TurnComplete{turn}
-
-		select {
-		case <-pause:
-			<-pause
-		default:
-			break
-		}
 
 		prevWorld = nextWorld
 		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
