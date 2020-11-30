@@ -15,6 +15,7 @@ type distributorChannels struct {
 	ioFilename chan<- string
 	ioInput    <-chan uint8
 	ioOutput   chan<- uint8
+	keyPresses <-chan rune
 }
 
 type workerParams struct {
@@ -34,6 +35,17 @@ type workerChannels struct {
 	events   chan<- Event
 	syncChan []chan int
 	confChan []chan bool
+}
+
+func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
+	c.ioCommand <- ioOutput
+	outputFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
+	c.ioFilename <- outputFilename
+	for row := 0; row < p.ImageHeight; row++ {
+		for cell := 0; cell < p.ImageWidth; cell++ {
+			c.ioOutput <- world[row][cell]
+		}
+	}
 }
 
 // creates a grid to represent the current state of the world
@@ -139,7 +151,8 @@ func distributor(p Params, c distributorChannels) {
 
 	// run the game of life
 	var turn int
-	for turn = 0; turn < p.Turns; turn++ {
+	quit := false
+	for turn = 0; turn < p.Turns && quit = false; turn++ {
 		//receive a message from every thread sayng they are done with the turn.
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
@@ -153,7 +166,27 @@ func distributor(p Params, c distributorChannels) {
 		prevWorld = nextWorld
 		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
 
-		for i := 0; i < p.Threads; i++ {
+				select {
+		case x := <-c.keyPresses:
+			if x == 's' {
+				saveWorld(c, p, turn, prevWorld)
+			} else if x == 'q' {
+				quit = true
+			} else if x == 'p' {
+				x = ' '
+				for x != 'p' {
+					<-c.keyPresses
+				}
+			} else if x == 'k' {
+				//to be implemented in the far future...
+			} else {
+				// error message
+			}
+		default:
+			break
+		}
+
+		for i := 0; i < p.Threads && quit == false; i++ {
 			wc.confChan[i] <- true
 		}
 
@@ -168,21 +201,18 @@ func distributor(p Params, c distributorChannels) {
 			break
 		}
 
+		// handle keyPresses
+
+
 		// update the ticker
 		ds.turns <- turn
 		ds.previousWorld <- prevWorld
 	}
+	
 	ds.stop <- true
 
-	c.ioCommand <- ioOutput
-	outputFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
-	c.ioFilename <- outputFilename
-
-	for row := 0; row < p.ImageHeight; row++ {
-		for cell := 0; cell < p.ImageWidth; cell++ {
-			c.ioOutput <- prevWorld[row][cell]
-		}
-	}
+	// output the result to a file
+	saveWorld(c, p, turn, prevWorld)
 
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
 
