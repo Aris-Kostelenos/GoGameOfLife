@@ -116,6 +116,60 @@ func writePgmImage(imageHeight int, imageWidth int, world [][]byte, filename str
 	fmt.Println("File", filename, "output done!")
 }
 
+func handleKeyPresses(c distributorChannels, p Params, turn int, prevWorld [][]uint8) bool {
+	quit := false
+	select {
+	case x := <-c.keyPresses:
+		switch x {
+		case 's':
+			saveWorld(c, p, turn, prevWorld)
+		case 'q':
+			quit = true
+		case 'p':
+			<-c.keyPresses
+		case 'k':
+			break
+		default:
+			log.Fatalf("Unexpected keypress: %v", x)
+		}
+	default:
+		break
+	}
+	return quit
+}
+
+func runGol(p Params, wc workerChannels, c distributorChannels, t *Ticker, prevWorld [][]uint8, nextWorld [][]uint8) int {
+	var turn int
+	quit := false
+	for turn = 0; turn < p.Turns && quit == false; turn++ {
+
+		// wait for all workers to complete this turn
+		for i := 0; i < p.Threads; i++ {
+			x := <-wc.syncChan[i]
+			if x != turn {
+				log.Fatal("Thread out of sync")
+			}
+		}
+		c.events <- TurnComplete{turn}
+
+		// swap the previous and next grids
+		t.mutex.Lock()
+		prevWorld = nextWorld
+		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+		t.mutex.Unlock()
+
+		// handle key presses
+		quit = handleKeyPresses(c, p, turn, prevWorld)
+
+		// order the workers to start the next turn and notify the ticker
+		for i := 0; i < p.Threads && quit == false; i++ {
+			wc.confChan[i] <- true
+		}
+		t.turns <- turn
+	}
+	return turn
+}
+
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
@@ -146,69 +200,16 @@ func distributor(p Params, c distributorChannels) {
 	t := Ticker{}
 	t.turns = make(chan int)
 	t.stop = make(chan bool)
-	t.previousWorld = make(chan [][]uint8)
+	t.prevWorld = &prevWorld
 	go t.startTicker(c.events)
 
 	// run the game of life
-	var turn int
-	quit := false
-	for turn = 0; turn < p.Turns && quit == false; turn++ {
+	turn := runGol(p, wc, c, &t, prevWorld, nextWorld)
 
-		// wait for all workers to complete this turn
-		for i := 0; i < p.Threads; i++ {
-			x := <-wc.syncChan[i]
-			if x != turn {
-				log.Fatal("Thread out of sync")
-			}
-		}
-
-		c.events <- TurnComplete{turn}
-
-		// swap the previous and next grids
-		t.mutex.Lock()
-		prevWorld = nextWorld
-		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
-		t.mutex.Unlock()
-
-		// handle key presses
-		select {
-		case x := <-c.keyPresses:
-			switch x {
-			case 's':
-				saveWorld(c, p, turn, prevWorld)
-			case 'q':
-				quit = true
-			case 'p':
-				<-c.keyPresses
-			case 'k':
-				// to be implemented in the far future...
-				break
-			default:
-				log.Fatalf("Unexpected keypress: %v", x)
-			}
-		default:
-			break
-		}
-
-		// order the workers to start the next turn
-		for i := 0; i < p.Threads && quit == false; i++ {
-			wc.confChan[i] <- true
-		}
-
-		// update the ticker
-		t.turns <- turn
-		t.previousWorld <- prevWorld
-	}
-
+	// end the game of life
 	t.stop <- true
-
-	// output the result to a file
 	saveWorld(c, p, turn, prevWorld)
-
 	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
-
-	// TODO: Send correct Events when required, e.g. CellFlipped, TurnComplete and FinalTurnComplete.
-	//		 See event.go for a list of all events.
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle

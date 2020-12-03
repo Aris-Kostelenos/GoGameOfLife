@@ -7,16 +7,15 @@ import (
 
 // Ticker is used to send AliveCellsCount events every 2 seconds
 type Ticker struct {
-	turns         chan int
-	previousWorld chan [][]uint8
-	stop          chan bool
-	mutex         sync.Mutex
+	turns     chan int
+	prevWorld *[][]uint8
+	stop      chan bool
+	mutex     sync.Mutex
 }
 
 func (t *Ticker) startTicker(events chan<- Event) {
 	ticker := time.NewTicker(2 * time.Second)
 	turn := 0
-	var prevWorld [][]uint8
 	running := true
 	for running {
 		select {
@@ -25,10 +24,9 @@ func (t *Ticker) startTicker(events chan<- Event) {
 			running = false
 		case value := <-t.turns:
 			turn = value + 1
-			prevWorld = <-t.previousWorld
 		case <-ticker.C:
 			t.mutex.Lock()
-			alive := len(calculateAliveCells(prevWorld))
+			alive := len(calculateAliveCells(*t.prevWorld))
 			events <- AliveCellsCount{turn, alive}
 			t.mutex.Unlock()
 		default:
