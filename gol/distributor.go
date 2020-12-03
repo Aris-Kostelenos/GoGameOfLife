@@ -204,7 +204,35 @@ func distributor(p Params, c distributorChannels) {
 	go t.startTicker(c.events)
 
 	// run the game of life
-	turn := runGol(p, wc, c, &t, prevWorld, nextWorld)
+	// turn := runGol(p, wc, c, &t, prevWorld, nextWorld)
+	var turn int
+	quit := false
+	for turn = 0; turn < p.Turns && quit == false; turn++ {
+
+		// wait for all workers to complete this turn
+		for i := 0; i < p.Threads; i++ {
+			x := <-wc.syncChan[i]
+			if x != turn {
+				log.Fatal("Thread out of sync")
+			}
+		}
+		c.events <- TurnComplete{turn}
+
+		// swap the previous and next grids
+		t.mutex.Lock()
+		prevWorld = nextWorld
+		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+		t.mutex.Unlock()
+
+		// handle key presses
+		quit = handleKeyPresses(c, p, turn, prevWorld)
+
+		// order the workers to start the next turn and notify the ticker
+		for i := 0; i < p.Threads && quit == false; i++ {
+			wc.confChan[i] <- true
+		}
+		t.turns <- turn
+	}
 
 	// end the game of life
 	t.stop <- true
