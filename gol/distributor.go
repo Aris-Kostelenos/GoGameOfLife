@@ -2,6 +2,7 @@ package gol
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -142,73 +143,64 @@ func distributor(p Params, c distributorChannels) {
 	makeWorkers(p.Threads, rowsPerSlice, extra, wc, wp)
 
 	// create a ticker
-	ds := state{}
-	ds.turns = make(chan int)
-	ds.stop = make(chan bool)
-	ds.previousWorld = make(chan [][]uint8)
-	ds.mutex = make(chan bool)
-	go startTicker(c.events, ds)
+	t := Ticker{}
+	t.turns = make(chan int)
+	t.stop = make(chan bool)
+	t.previousWorld = make(chan [][]uint8)
+	go t.startTicker(c.events)
 
 	// run the game of life
 	var turn int
 	quit := false
 	for turn = 0; turn < p.Turns && quit == false; turn++ {
-		//receive a message from every thread sayng they are done with the turn.
+
+		// wait for all workers to complete this turn
 		for i := 0; i < p.Threads; i++ {
 			x := <-wc.syncChan[i]
 			if x != turn {
-				//TODO: send an error
+				log.Fatal("Thread out of sync")
 			}
 		}
 
 		c.events <- TurnComplete{turn}
 
+		// swap the previous and next grids
+		t.mutex.Lock()
 		prevWorld = nextWorld
 		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+		t.mutex.Unlock()
 
+		// handle key presses
 		select {
 		case x := <-c.keyPresses:
-			if x == 's' {
+			switch x {
+			case 's':
 				saveWorld(c, p, turn, prevWorld)
-			} else if x == 'q' {
+			case 'q':
 				quit = true
-			} else if x == 'p' {
-				x = ' '
-				for x != 'p' {
-					<-c.keyPresses
-				}
-			} else if x == 'k' {
-				//to be implemented in the far future...
-			} else {
-				// error message
+			case 'p':
+				<-c.keyPresses
+			case 'k':
+				// to be implemented in the far future...
+				break
+			default:
+				log.Fatalf("Unexpected keypress: %v", x)
 			}
 		default:
 			break
 		}
 
+		// order the workers to start the next turn
 		for i := 0; i < p.Threads && quit == false; i++ {
 			wc.confChan[i] <- true
 		}
 
-		select {
-		case x := <-ds.mutex:
-			if x == true {
-				//fmt.Println("yin")
-				<-ds.mutex
-				//fmt.Println("yan")
-			}
-		default:
-			break
-		}
-
-		// handle keyPresses
-
 		// update the ticker
-		ds.turns <- turn
-		ds.previousWorld <- prevWorld
+		t.turns <- turn
+		t.previousWorld <- prevWorld
 	}
 
-	ds.stop <- true
+	t.stop <- true
 
 	// output the result to a file
 	saveWorld(c, p, turn, prevWorld)

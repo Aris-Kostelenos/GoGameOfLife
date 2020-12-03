@@ -1,38 +1,36 @@
 package gol
 
 import (
+	"sync"
 	"time"
 )
 
-type state struct {
+// Ticker is used to send AliveCellsCount events every 2 seconds
+type Ticker struct {
 	turns         chan int
 	previousWorld chan [][]uint8
 	stop          chan bool
-	mutex         chan bool
+	mutex         sync.Mutex
 }
 
-func startTicker(events chan<- Event, state state) {
+func (t *Ticker) startTicker(events chan<- Event) {
 	ticker := time.NewTicker(2 * time.Second)
 	turn := 0
 	var prevWorld [][]uint8
-	x := true
-	for x {
+	running := true
+	for running {
 		select {
-		case <-state.stop:
+		case <-t.stop:
 			ticker.Stop()
-			x = false
-		case value := <-state.turns:
-
+			running = false
+		case value := <-t.turns:
 			turn = value + 1
-			prevWorld = <-state.previousWorld
-
+			prevWorld = <-t.previousWorld
 		case <-ticker.C:
-			state.mutex <- true
-			//fmt.Println("hi!")
+			t.mutex.Lock()
 			alive := len(calculateAliveCells(prevWorld))
 			events <- AliveCellsCount{turn, alive}
-			//fmt.Println("hi again!")
-			state.mutex <- false
+			t.mutex.Unlock()
 		default:
 			break
 		}
