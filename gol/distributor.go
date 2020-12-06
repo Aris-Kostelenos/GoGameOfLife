@@ -2,7 +2,6 @@ package gol
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/ChrisGora/semaphore"
 	"uk.ac.bris.cs/gameoflife/util"
@@ -18,7 +17,10 @@ type distributorChannels struct {
 	keyPresses <-chan rune
 }
 
+
+
 // saves the given world as a pgm file
+/*
 func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
 	c.ioCommand <- ioOutput
 	outputFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
@@ -29,6 +31,42 @@ func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
 		}
 	}
 }
+*/
+
+
+
+func main() {
+	// Read in the network port we should listen on, from the commandline argument.
+	// Default to port 8030
+	portPtr := flag.String("port", ":8030", "port to listen on")
+	flag.Parse()
+
+	//TODO Create a Listener for TCP connections on the port given above.
+	listener, error2 := net.Listen("tcp", *portPtr)
+	handleError(error2)
+	//Create a channel for connections
+	conns := make(chan net.Conn)
+	//Create a channel for messages
+
+	//Start accepting connections
+	go acceptConns(listener, conns)
+	for {
+		conn := <-conns
+		fmt.Fprint(*conn, "poo")
+
+		//TODO Deal with a new connectio
+			// - assign a client ID
+			// - add the client to the clients channel
+			// - start to asynchronously handle messages from this client
+			
+			//TODO Deal with a new message
+			// Send the message to all clients that aren't the sender
+		
+	}
+}
+
+*/
+
 
 // creates a grid to represent the current state of the world
 func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
@@ -69,7 +107,7 @@ func makeWorkers(p Params, c distributorChannels, prevWorld, nextWorld *[][]uint
 		w := worker{}
 		w.prevWorld = prevWorld
 		w.nextWorld = nextWorld
-		w.events = c.events
+		//w.events = c.events
 		w.startRow = startRow
 		w.endRow = startRow + workerRows - 1
 		w.width = p.ImageWidth
@@ -81,29 +119,6 @@ func makeWorkers(p Params, c distributorChannels, prevWorld, nextWorld *[][]uint
 		startRow = w.endRow + 1
 	}
 	return workers
-}
-
-// handles keypresses received from SDL
-func handleKeyPresses(c distributorChannels, p Params, turn int, prevWorld [][]uint8) bool {
-	quit := false
-	select {
-	case x := <-c.keyPresses:
-		switch x {
-		case 's':
-			saveWorld(c, p, turn, prevWorld)
-		case 'q':
-			quit = true
-		case 'p':
-			<-c.keyPresses
-		case 'k':
-			break
-		default:
-			log.Fatalf("Unexpected keypress: %v", x)
-		}
-	default:
-		break
-	}
-	return quit
 }
 
 // distributor divides the work between workers and interacts with other goroutines.

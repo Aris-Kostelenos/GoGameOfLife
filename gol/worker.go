@@ -8,12 +8,12 @@ import (
 type worker struct {
 	prevWorld *[][]uint8
 	nextWorld *[][]uint8
-	events    chan<- Event // should workers have a mutex lock around access to events?
-	startRow  int
-	endRow    int
-	width     int
-	work      semaphore.Semaphore
-	space     semaphore.Semaphore
+	//events    chan<- Event // should workers have a mutex lock around access to events?
+	startRow int
+	endRow   int
+	width    int
+	work     semaphore.Semaphore
+	space    semaphore.Semaphore
 }
 
 // LIVE constant
@@ -62,12 +62,10 @@ func (w *worker) calculateNextState(turn int) {
 					(*w.nextWorld)[row][col] = LIVE
 				} else {
 					(*w.nextWorld)[row][col] = DEAD
-					w.events <- CellFlipped{turn, util.Cell{X: col, Y: row}}
 				}
 			} else {
 				if live == 3 {
 					(*w.nextWorld)[row][col] = LIVE
-					w.events <- CellFlipped{turn, util.Cell{X: col, Y: row}}
 				} else {
 					(*w.nextWorld)[row][col] = DEAD
 				}

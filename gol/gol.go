@@ -17,7 +17,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	ioInput := make(chan uint8)
 	ioOutput := make(chan uint8)
 
-	distributorChannels := distributorChannels{
+	clientChannels := ClientChannels{
 		events,
 		ioCommand,
 		ioIdle,
@@ -26,7 +26,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 		ioOutput,
 		keyPresses,
 	}
-	go distributor(p, distributorChannels)
+	go client(p, clientChannels)
 
 	ioChannels := ioChannels{
 		command:  ioCommand,
