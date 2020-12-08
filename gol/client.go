@@ -1,15 +1,15 @@
 package gol
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"net"
 	"net/rpc"
-	"os"
+
+	"uk.ac.bris.cs/gameoflife/stubs"
+	"uk.ac.bris.cs/gameoflife/util"
 )
 
-type ClientChannels struct {
+type clientChannels struct {
 	events     chan<- Event
 	ioCommand  chan<- ioCommand
 	ioIdle     <-chan bool
@@ -19,7 +19,12 @@ type ClientChannels struct {
 	keyPresses <-chan rune
 }
 
-func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
+// Client performs server interaction
+type Client struct {
+	t Ticker
+}
+
+func saveWorld(c clientChannels, p Params, world [][]uint8, turn int) {
 	c.ioCommand <- ioOutput
 	outputFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
 	c.ioFilename <- outputFilename
@@ -30,98 +35,116 @@ func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
 	}
 }
 
-func handleKeyPresses(c distributorChannels, p Params, turn int, prevWorld [][]uint8) bool {
-	quit := false
-	select {
-	case x := <-c.keyPresses:
-		switch x {
-		case 's':
-			saveWorld(c, p, turn, prevWorld)
-		case 'q':
+func array16ToSlice(world [16][16]uint8) [][]uint8 {
+	sliceWorld := make([][]uint8, 16)
+	for row := 0; row < 16; row++ {
+		for col := 0; col < 16; col++ {
+			sliceWorld[row] = append(sliceWorld[row], world[row][:16]...)
+		}
+	}
+	return sliceWorld
+}
+
+func extractAlive(world [][]uint8) []util.Cell {
+	alive := make([]util.Cell, 0)
+	for row := range world {
+		for col := range world[row] {
+			if world[row][col] == 255 {
+				alive = append(alive, util.Cell{X: col, Y: row})
+			}
+		}
+	}
+	return alive
+}
+
+func (client *Client) getWorld16(server *rpc.Client) (world [][]uint8, turn int) {
+	client.t.mutex.Lock()
+	args := new(stubs.Default)
+	reply := new(stubs.World16)
+	server.Call(stubs.GetWorld16, args, reply)
+	client.t.mutex.Unlock()
+	return array16ToSlice(reply.World), reply.Turn
+}
+
+func (client *Client) pauseServer(server *rpc.Client) (turn int) {
+	client.t.mutex.Lock()
+	args := new(stubs.Default)
+	reply := new(stubs.Turn)
+	server.Call(stubs.Pause, args, reply)
+	client.t.mutex.Unlock()
+	return reply.Turn
+}
+
+func (client *Client) killServer(server *rpc.Client) (turn int) {
+	client.t.mutex.Lock()
+	args := new(stubs.Default)
+	reply := new(stubs.Turn)
+	server.Call(stubs.Kill, args, reply)
+	client.t.mutex.Unlock()
+	return reply.Turn
+}
+
+func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Client) (turn int) {
+	turn = 0
+	for quit := false; !quit; {
+		select {
+		case turn = <-client.t.done:
+			world, turn := client.getWorld16(server)
+			saveWorld(c, p, world, turn)
+			alive := extractAlive(world)
+			c.events <- FinalTurnComplete{turn, alive}
 			quit = true
-		case 'p':
-			<-c.keyPresses
-		case 'k':
-			break
-		default:
-			log.Fatalf("Unexpected keypress: %v", x)
+		case key := <-c.keyPresses:
+			switch key {
+			case 's':
+				world, turn := client.getWorld16(server)
+				saveWorld(c, p, world, turn)
+			case 'q':
+				quit = true
+			case 'p':
+				// tell the server to pause
+				turn = client.pauseServer(server)
+				fmt.Printf("Paused. %v turns complete\n", turn)
+				// wait for resume keypress
+				var key rune
+				for key != 'p' {
+					key = <-c.keyPresses
+				}
+				// tell the server to resume
+				client.pauseServer(server)
+				fmt.Println("Continuing...")
+			case 'k':
+				world, turn := client.getWorld16(server)
+				saveWorld(c, p, world, turn)
+				turn = client.killServer(server)
+				quit = true
+			default:
+				log.Fatalf("Unexpected keypress: %v", key)
+			}
 		}
-	default:
-		break
 	}
-	return quit
+	return turn
 }
 
-func client(p Params, c ClientChannels) {
+func (client *Client) run(p Params, c clientChannels, server *rpc.Client) {
 
-	// start GOL on the server
-	// handle keypresses
-	// receive and deal with stuff from the server
+	// create a ticker
+	client.t = Ticker{}
+	client.t.stop = make(chan bool)
+	client.t.done = make(chan int)
+	go client.t.startTicker(c.events)
 
-	netConn, error1 := net.Dial("tcp", "127.0.0.1:8030")
-	if error1 != nil {
-		handleError(error1)
-	}
+	// main loop
+	turn := client.handleEvents(c, p, server)
 
-	rpcConn, error2 := rpc.Dial("tcp", "127.0.0.1:8030")
-	
-	if error1 != nil {
-		handleError(error1)
-	}
+	// end the ticker
+	client.t.stop <- true
 
-	//TODO Start asynchronously reading and displaying messages
-	//TODO Start getting and sending user messages.
-	go read(&netConn)
-	for {
+	// Make sure that the Io has finished any output before exiting.
+	c.ioCommand <- ioCheckIdle
+	<-c.ioIdle
 
-	}
+	c.events <- StateChange{turn, Quitting}
+	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
+	close(c.events)
 }
-
-func read(conn *net.Conn) {
-	//TODO In a continuous loop, read a message from the server and display it.
-	reader := bufio.NewReader(*conn)
-	for {
-		msg, error3 := reader.ReadString('\n')
-		if error3 != nil {
-			handleError(error3)
-		}
-		fmt.Print(msg)
-	}
-}
-
-/*
-SERVER TO CLIENT (using net)
-
-ReportAlive() {
-	every 2 seconds:
-		send numberOfAliveCells to client
-}
-
-Finished() {
-	after all turns complete:
-		send imDone message to client
-		send dataFromPrevWorld to client
-}
-*/
-
-func handleError(err error) {
-	fmt.Println(err)
-	os.Exit(1)
-	// TODO: all
-	// Deal with an error event.
-}
-
-/*
-func client(p, c) {
-
-	conn, error1 := net.Dial("tcp", "127.0.0.1:8030")
-	if error1 != nil {
-		handleError(error1)
-	}
-	//TODO Start asynchronously reading and displaying messages
-	//TODO Start getting and sending user messages.
-	for {
-
-	}
-}
-*/

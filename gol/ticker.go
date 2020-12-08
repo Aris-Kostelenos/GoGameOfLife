@@ -1,36 +1,40 @@
 package gol
 
 import (
+	"net/rpc"
 	"sync"
 	"time"
+
+	"uk.ac.bris.cs/gameoflife/stubs"
 )
 
 // Ticker is used to send AliveCellsCount events every 2 seconds
 type Ticker struct {
-	turns     chan int
-	prevWorld *[][]uint8
-	stop      chan bool
-	mutex     sync.Mutex
+	stop       chan bool
+	done       chan int
+	server     *rpc.Client
+	mutex      sync.Mutex
+	totalTurns int
 }
 
 func (t *Ticker) startTicker(events chan<- Event) {
 	ticker := time.NewTicker(2 * time.Second)
-	turn := 0
 	running := true
 	for running {
 		select {
 		case <-t.stop:
 			ticker.Stop()
 			running = false
-		case value := <-t.turns:
-			turn = value + 1
 		case <-ticker.C:
 			t.mutex.Lock()
-			alive := len(getAliveCells(*t.prevWorld))
-			events <- AliveCellsCount{turn, alive}
+			args := new(stubs.Default)
+			reply := new(stubs.Alive)
+			t.server.Call(stubs.GetNumAlive, args, reply)
+			events <- AliveCellsCount{reply.Turn, reply.Num}
+			if reply.Turn > t.totalTurns {
+				t.done <- reply.Turn
+			}
 			t.mutex.Unlock()
-		default:
-			break
 		}
 	}
 }

@@ -1,19 +1,17 @@
-package gol
+package server
 
 import (
 	"github.com/ChrisGora/semaphore"
-	"uk.ac.bris.cs/gameoflife/util"
 )
 
 type worker struct {
 	prevWorld *[][]uint8
 	nextWorld *[][]uint8
-	//events    chan<- Event // should workers have a mutex lock around access to events?
-	startRow int
-	endRow   int
-	width    int
-	work     semaphore.Semaphore
-	space    semaphore.Semaphore
+	startRow  int
+	endRow    int
+	width     int
+	work      semaphore.Semaphore
+	space     semaphore.Semaphore
 }
 
 // LIVE constant
@@ -81,17 +79,4 @@ func (w *worker) processStrip() {
 		w.calculateNextState(turn)
 		w.space.Post()
 	}
-}
-
-// returns a slice of the alive cells in prevWorld
-func getAliveCells(prevWorld [][]uint8) []util.Cell {
-	alive := make([]util.Cell, 0)
-	for row := range prevWorld {
-		for col := range prevWorld[row] {
-			if prevWorld[row][col] == LIVE {
-				alive = append(alive, util.Cell{X: col, Y: row})
-			}
-		}
-	}
-	return alive
 }
