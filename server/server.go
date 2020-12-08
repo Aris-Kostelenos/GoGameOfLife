@@ -26,7 +26,11 @@ func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
 	// convert the world from an array to a slice
 	worldSlice := make([][]uint8, 16)
 	for row := 0; row < 16; row++ {
-		copy(worldSlice[row], args.World[row][:15])
+		worldSlice[row] = make([]uint8, 16)
+		for col := 0; col < 16; col++ {
+			worldSlice[row][col] = args.World[row][col]
+		}
+		fmt.Println(worldSlice[row])
 	}
 	// start the distributor
 	s.distributor = Distributor{
@@ -129,7 +133,7 @@ func main() {
 		}
 		defer listener.Close()
 		// accept a listener
-		fmt.Println("...listener received")
 		rpc.Accept(listener)
+		fmt.Println("...listener received")
 	}
 }

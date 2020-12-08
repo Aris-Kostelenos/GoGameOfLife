@@ -58,42 +58,50 @@ func extractAlive(world [][]uint8) []util.Cell {
 }
 
 func (client *Client) getWorld16(server *rpc.Client) (world [][]uint8, turn int) {
-	client.t.mutex.Lock()
 	args := new(stubs.Default)
 	reply := new(stubs.World16)
 	server.Call(stubs.GetWorld16, args, reply)
-	client.t.mutex.Unlock()
 	return array16ToSlice(reply.World), reply.Turn
 }
 
 func (client *Client) pauseServer(server *rpc.Client) (turn int) {
-	client.t.mutex.Lock()
 	args := new(stubs.Default)
 	reply := new(stubs.Turn)
 	server.Call(stubs.Pause, args, reply)
-	client.t.mutex.Unlock()
 	return reply.Turn
 }
 
 func (client *Client) killServer(server *rpc.Client) (turn int) {
-	client.t.mutex.Lock()
 	args := new(stubs.Default)
 	reply := new(stubs.Turn)
 	server.Call(stubs.Kill, args, reply)
-	client.t.mutex.Unlock()
 	return reply.Turn
+}
+
+func (client *Client) getAlive(p Params, server *rpc.Client, events chan<- Event) (done bool) {
+	args := new(stubs.Default)
+	reply := new(stubs.Alive)
+	server.Call(stubs.GetNumAlive, args, reply)
+	events <- AliveCellsCount{reply.Turn, reply.Num}
+	if reply.Turn > p.Turns {
+		return true
+	}
+	return false
 }
 
 func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Client) (turn int) {
 	turn = 0
 	for quit := false; !quit; {
 		select {
-		case turn = <-client.t.done:
-			world, turn := client.getWorld16(server)
-			saveWorld(c, p, world, turn)
-			alive := extractAlive(world)
-			c.events <- FinalTurnComplete{turn, alive}
-			quit = true
+		case <-client.t.tick:
+			done := client.getAlive(p, server, c.events)
+			if done {
+				world, turn := client.getWorld16(server)
+				saveWorld(c, p, world, turn)
+				alive := extractAlive(world)
+				c.events <- FinalTurnComplete{turn, alive}
+				quit = true
+			}
 		case key := <-c.keyPresses:
 			switch key {
 			case 's':
@@ -131,7 +139,7 @@ func (client *Client) run(p Params, c clientChannels, server *rpc.Client) {
 	// create a ticker
 	client.t = Ticker{}
 	client.t.stop = make(chan bool)
-	client.t.done = make(chan int)
+	client.t.tick = make(chan bool)
 	go client.t.startTicker(c.events)
 
 	// main loop
