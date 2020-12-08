@@ -38,8 +38,9 @@ func saveWorld(c clientChannels, p Params, world [][]uint8, turn int) {
 func array16ToSlice(world [16][16]uint8) [][]uint8 {
 	sliceWorld := make([][]uint8, 16)
 	for row := 0; row < 16; row++ {
+		sliceWorld[row] = make([]uint8, 16)
 		for col := 0; col < 16; col++ {
-			sliceWorld[row] = append(sliceWorld[row], world[row][:16]...)
+			sliceWorld[row][col] = world[row][col]
 		}
 	}
 	return sliceWorld
@@ -60,7 +61,9 @@ func extractAlive(world [][]uint8) []util.Cell {
 func (client *Client) getWorld16(server *rpc.Client) (world [][]uint8, turn int) {
 	args := new(stubs.Default)
 	reply := new(stubs.World16)
-	server.Call(stubs.GetWorld16, args, reply)
+	fmt.Println("getting world16")
+	err := server.Call(stubs.GetWorld16, args, reply)
+	fmt.Println("err:", err)
 	return array16ToSlice(reply.World), reply.Turn
 }
 
@@ -83,7 +86,7 @@ func (client *Client) getAlive(p Params, server *rpc.Client, events chan<- Event
 	reply := new(stubs.Alive)
 	server.Call(stubs.GetNumAlive, args, reply)
 	events <- AliveCellsCount{reply.Turn, reply.Num}
-	if reply.Turn > p.Turns {
+	if reply.Turn >= p.Turns {
 		return true
 	}
 	return false
@@ -100,6 +103,7 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 				saveWorld(c, p, world, turn)
 				alive := extractAlive(world)
 				c.events <- FinalTurnComplete{turn, alive}
+				turn = client.killServer(server)
 				quit = true
 			}
 		case key := <-c.keyPresses:
@@ -147,6 +151,7 @@ func (client *Client) run(p Params, c clientChannels, server *rpc.Client) {
 
 	// end the ticker
 	client.t.stop <- true
+	server.Close()
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle

@@ -1,7 +1,6 @@
 package gol
 
 import (
-	"flag"
 	"fmt"
 	"net/rpc"
 
@@ -52,15 +51,15 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	world := makeWorld16(IoInput)
 
 	// parse the command-line flags
-	var serverAddress string
-	flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
+	serverAddress := "localhost:8030"
+	// flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
 
 	// dial the server
 	server, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
 		panic(err)
 	}
-	defer server.Close()
+	// defer server.Close()
 
 	// start the game of life simulation on the server
 	args := stubs.Start16{
@@ -71,10 +70,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	reply := new(stubs.ID)
 	err = server.Call(stubs.StartGoL16, args, reply)
 	if err != nil {
-		// try connecting instead
-	} else {
-		// GoL has begun
-		// start handling keypresses, tickers and other events
+		panic(err)
 	}
 
 	clientChannels := clientChannels{

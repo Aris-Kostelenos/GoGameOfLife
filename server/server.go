@@ -20,6 +20,7 @@ type Server struct {
 
 // StartGoL16 starts processing a 16x16 Game of Life simulation
 func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
+	fmt.Println("starting new GoL16")
 	if s.inProgress {
 		return errors.New("Simulation already in progress")
 	}
@@ -30,7 +31,6 @@ func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
 		for col := 0; col < 16; col++ {
 			worldSlice[row][col] = args.World[row][col]
 		}
-		fmt.Println(worldSlice[row])
 	}
 	// start the distributor
 	s.distributor = Distributor{
@@ -67,6 +67,7 @@ func (s *Server) GetWorld16(args stubs.Default, reply *stubs.World16) error {
 	reply.Turn = s.distributor.currentTurn
 	reply.World = [16][16]uint8{}
 	for row := 0; row < 16; row++ {
+		reply.World[row] = [16]uint8{}
 		for col := 0; col < 16; col++ {
 			reply.World[row][col] = s.distributor.prevWorld[row][col]
 		}
@@ -89,6 +90,7 @@ func (s *Server) Connect(args stubs.Default, reply *stubs.Status) error {
 
 // Pause starts/stops the server until further notice
 func (s *Server) Pause(args stubs.Default, reply *stubs.Turn) error {
+	fmt.Println("pausing")
 	s.distributor.mutex.Lock()
 	s.distributor.paused <- true
 	reply.Turn = s.distributor.currentTurn
@@ -105,6 +107,7 @@ func (s *Server) Kill(args stubs.Default, reply *stubs.Turn) error {
 	s.distributor.quit = true
 	reply.Turn = s.distributor.currentTurn
 	s.distributor.mutex.Unlock()
+	s.inProgress = false
 	return nil
 }
 
@@ -134,6 +137,5 @@ func main() {
 		defer listener.Close()
 		// accept a listener
 		rpc.Accept(listener)
-		fmt.Println("...listener received")
 	}
 }
