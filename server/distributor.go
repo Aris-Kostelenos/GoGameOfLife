@@ -1,13 +1,14 @@
-package server
+package main
 
 import (
+	"server/util"
 	"sync"
 
 	"github.com/ChrisGora/semaphore"
-	"uk.ac.bris.cs/gameoflife/util"
 )
 
-type distributor struct {
+// Distributor struct
+type Distributor struct {
 	currentTurn int
 	numOfTurns  int
 	threads     int
@@ -22,7 +23,7 @@ type distributor struct {
 }
 
 // creates a grid to represent the next state of the world
-func (d *distributor) makeNextWorld() {
+func (d *Distributor) makeNextWorld() {
 	d.nextWorld = make([][]uint8, d.imageHeight)
 	for row := 0; row < d.imageHeight; row++ {
 		d.nextWorld[row] = make([]uint8, d.imageWidth)
@@ -30,7 +31,7 @@ func (d *distributor) makeNextWorld() {
 }
 
 // creates workers and starts their goroutines
-func (d *distributor) makeWorkers() {
+func (d *Distributor) makeWorkers() {
 	rowsPerSlice := d.imageHeight / d.threads
 	extra := d.imageHeight % d.threads
 	startRow := 0
@@ -59,7 +60,7 @@ func (d *distributor) makeWorkers() {
 }
 
 // returns a slice of the alive cells in prevWorld
-func (d *distributor) getAliveCells() []util.Cell {
+func (d *Distributor) getAliveCells() []util.Cell {
 	alive := make([]util.Cell, 0)
 	for row := range d.prevWorld {
 		for col := range d.prevWorld[row] {
@@ -72,7 +73,7 @@ func (d *distributor) getAliveCells() []util.Cell {
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
-func (d *distributor) run() {
+func (d *Distributor) run() {
 
 	// initialise the state
 	d.makeNextWorld()

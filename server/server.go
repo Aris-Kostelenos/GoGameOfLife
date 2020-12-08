@@ -1,4 +1,4 @@
-package server
+package main
 
 // TODO: rename package to main when separated?
 
@@ -9,13 +9,13 @@ import (
 	"net"
 	"net/rpc"
 
-	"uk.ac.bris.cs/gameoflife/stubs"
+	"server/stubs"
 )
 
 // Server is the interface for the server-side GoL engine
 type Server struct {
 	inProgress  bool
-	distributor distributor
+	distributor Distributor
 }
 
 // StartGoL16 starts processing a 16x16 Game of Life simulation
@@ -29,7 +29,7 @@ func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
 		copy(worldSlice[row], args.World[row][:15])
 	}
 	// start the distributor
-	s.distributor = distributor{
+	s.distributor = Distributor{
 		currentTurn: 0,
 		numOfTurns:  args.Turns,
 		threads:     args.Threads,
@@ -122,12 +122,14 @@ func main() {
 	// listen for calls
 	active := true
 	for active {
+		fmt.Println("listening...")
 		listener, err := net.Listen("tcp", ":"+*port)
 		if err != nil {
 			panic(err)
 		}
 		defer listener.Close()
 		// accept a listener
-		go rpc.Accept(listener)
+		fmt.Println("...listener received")
+		rpc.Accept(listener)
 	}
 }

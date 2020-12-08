@@ -31,6 +31,7 @@ func makeWorld16(IoInput chan uint8) [16][16]uint8 {
 // Run starts the processing of Game of Life. It should initialise channels and goroutines.
 func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
+	fmt.Println("started run")
 	IoCommand := make(chan ioCommand)
 	IoIdle := make(chan bool)
 	IoFilename := make(chan string)
@@ -44,14 +45,16 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
 	// parse the command-line flags
 	var serverAddress string
-	flag.StringVar(&serverAddress, "server", "localhost:8040", "IP:Port string of the server")
+	flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
 
 	// dial the server
+	fmt.Println("dialling server...")
 	server, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
 		panic(err)
 	}
 	defer server.Close()
+	fmt.Println("...dialled server")
 
 	// start the game of life simulation on the server
 	args := stubs.Start16{
@@ -60,7 +63,9 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 		World:   world,
 	}
 	reply := new(stubs.ID)
+	fmt.Println("calling server...")
 	err = server.Call(stubs.StartGoL16, args, reply)
+	fmt.Println("...called server")
 	if err != nil {
 		// try connecting instead
 	} else {
