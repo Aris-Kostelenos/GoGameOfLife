@@ -17,7 +17,6 @@ type Params struct {
 
 // creates a grid to represent the current state of the world
 
-
 func makeWorld(IoInput chan uint8, height int, width int) [][]uint8 {
 	world := make([][]uint8, height)
 	for row := 0; row < height; row++ {
@@ -67,22 +66,22 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
 	// start the game of life simulation on the server
 
-	/*
-		args := stubs.Start16{
-			Turns:   p.Turns,
-			Threads: p.Threads,
-			World:   world,
-		}
-	*/
-
 	stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
 
-	args := stubs.Start{
+	args := stubs.StartArgs{
 		Turns:   p.Turns,
 		Threads: p.Threads,
 		Height:  p.ImageHeight,
 		Width:   p.ImageWidth,
 		World:   stringWorld,
+	}
+
+	def := new(stubs.Default)
+	status := new(stubs.Status)
+	server.Call(stubs.Connect, def, status)
+	if status.Running {
+		killReply := new(stubs.Turn)
+		server.Call(stubs.Kill, def, killReply)
 	}
 
 	reply := new(stubs.ID)

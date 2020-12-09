@@ -21,7 +21,8 @@ type clientChannels struct {
 
 // Client performs server interaction
 type Client struct {
-	t Ticker
+	t    Ticker
+	quit bool
 }
 
 func saveWorld(c clientChannels, p Params, world [][]uint8, turn int) {
@@ -51,7 +52,7 @@ func (client *Client) getWorld(server *rpc.Client) (world [][]uint8, turn int) {
 	args := new(stubs.Default)
 	reply := new(stubs.World)
 	// fmt.Println("getting worlf Genreric")
-	err := server.Call(stubs.getWorld, args, reply)
+	err := server.Call(stubs.GetWorld, args, reply)
 	if err != nil {
 		fmt.Println("err", err)
 	}
@@ -69,7 +70,10 @@ func (client *Client) pauseServer(server *rpc.Client) (turn int) {
 func (client *Client) killServer(server *rpc.Client) (turn int) {
 	args := new(stubs.Default)
 	reply := new(stubs.Turn)
-	server.Call(stubs.Kill, args, reply)
+	err := server.Call(stubs.Kill, args, reply)
+	if err != nil {
+		panic(err)
+	}
 	return reply.Turn
 }
 
@@ -84,19 +88,33 @@ func (client *Client) getAlive(p Params, server *rpc.Client, events chan<- Event
 	return false
 }
 
+func (client *Client) checkDone(server *rpc.Client) (done bool) {
+	args := new(stubs.Default)
+	reply := new(stubs.Done)
+	err := server.Call(stubs.CheckDone, args, reply)
+	if err != nil {
+		panic(err)
+	}
+	return reply.Done
+}
+
 func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Client) (turn int) {
 	turn = 0
-	for quit := false; !quit; {
+	client.quit = false
+	for running := true; running; {
 		select {
-		case <-client.t.tick:
-			done := client.getAlive(p, server, c.events)
-			if done {
-				world, turn := client.getWorld(server)
-				saveWorld(c, p, world, turn)
-				alive := extractAlive(world)
-				c.events <- FinalTurnComplete{turn, alive}
-				turn = client.killServer(server)
-				quit = true
+		case tick := <-client.t.tick:
+			if tick == true {
+				client.getAlive(p, server, c.events)
+			} else if tick == false {
+				if client.checkDone(server) {
+					client.t.stop <- true
+					world, turn := client.getWorld(server)
+					saveWorld(c, p, world, turn)
+					alive := extractAlive(world)
+					c.events <- FinalTurnComplete{turn, alive}
+					running = false
+				}
 			}
 		case key := <-c.keyPresses:
 			switch key {
@@ -104,7 +122,8 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 				world, turn := client.getWorld(server)
 				saveWorld(c, p, world, turn)
 			case 'q':
-				quit = true
+				client.quit = true
+				running = false
 			case 'p':
 				// tell the server to pause
 				turn = client.pauseServer(server)
@@ -120,8 +139,7 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 			case 'k':
 				world, turn := client.getWorld(server)
 				saveWorld(c, p, world, turn)
-				turn = client.killServer(server)
-				quit = true
+				running = false
 			default:
 				log.Fatalf("Unexpected keypress: %v", key)
 			}
@@ -142,14 +160,16 @@ func (client *Client) run(p Params, c clientChannels, server *rpc.Client) {
 	turn := client.handleEvents(c, p, server)
 
 	// end the ticker
-	client.t.stop <- true
-	server.Close()
 
+	if !client.quit {
+		client.killServer(server)
+	}
+	server.Close()
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
-
 	c.events <- StateChange{turn, Quitting}
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
+
 }
