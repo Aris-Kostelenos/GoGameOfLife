@@ -76,6 +76,14 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 		World:   stringWorld,
 	}
 
+	def := new(stubs.Default)
+	status := new(stubs.Status)
+	server.Call(stubs.Connect, def, status)
+	if status.Running {
+		killReply := new(stubs.Turn)
+		server.Call(stubs.Kill, def, killReply)
+	}
+
 	reply := new(stubs.ID)
 	err = server.Call(stubs.StartGoL, args, reply)
 	if err != nil {

@@ -7,18 +7,38 @@ import (
 
 func encoder(height int, width int, world [][]uint8) string {
 	var s string
-	for i := 0; i < height; i++ {
-		for j := 0; j < width; j++ {
-			//s += strconv.Itoa(int(world[i][j])) + ","
-			if world[i][j] == 0 {
-				s += "0"
-			} else {
-				s += "1"
-			}
+	if height%2 == 0 {
+		for i := 0; i < height; i += 2 {
+			for j := 0; j < width; j++ {
+				//s += strconv.Itoa(int(world[i][j])) + ","
+				if world[i][j] == 0 && world[i+1][j] == 0 {
+					s += "0"
+				} else if world[i][j] == 0 && world[i+1][j] == 1 {
+					s += "1"
+				} else if world[i][j] == 1 && world[i+1][j] == 0 {
+					s += "2"
+				} else {
+					s += "3"
+				}
 
+			}
 		}
+
+	} else {
+		for i := 0; i < height; i++ {
+			for j := 0; j < width; j++ {
+				//s += strconv.Itoa(int(world[i][j])) + ","
+				if world[i][j] == 0 {
+					s += "0"
+				} else {
+					s += "1"
+				}
+
+			}
+		}
+		return s
 	}
-	return s
+
 }
 
 func decoder(height int, width int, s string) [][]uint8 {

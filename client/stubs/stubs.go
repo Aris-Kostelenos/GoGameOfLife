@@ -24,6 +24,10 @@ var Pause = "Server.Pause"
 // args = Default, reply = Turn
 var Kill = "Server.Kill"
 
+// CheckDone reports if the server is done processing GoL
+// args = Default, reply = Done
+var CheckDone = "Server.CheckDone"
+
 // StartArgs provides the initial conditions for GoL
 type StartArgs struct {
 	Turns   int
@@ -68,4 +72,9 @@ type Status struct {
 	Height      int
 	CurrentTurn int
 	NumOfTurns  int
+}
+
+// Done contains a boolean that represents whether or not the server has finished processing
+type Done struct {
+	Done bool
 }

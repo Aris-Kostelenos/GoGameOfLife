@@ -82,9 +82,7 @@ func (d *Distributor) run() {
 	d.makeWorkers()
 
 	// run the game of life
-	fmt.Println("turn:", d.currentTurn)
 	fmt.Println("total turns:", d.numOfTurns)
-	fmt.Println("quit", d.quit)
 	//fmt.Println("height ", d.imageHeight)
 	//fmt.Println("Width ", d.imageWidth)
 	//fmt.Println("prevWorld height", len(d.prevWorld))

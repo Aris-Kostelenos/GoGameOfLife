@@ -94,6 +94,22 @@ func (s *Server) GetNumAlive(args stubs.Default, reply *stubs.Alive) error {
 	return nil
 }
 
+// CheckDone returns true if the server is finished processing the current simulation
+func (s *Server) CheckDone(args stubs.Default, reply *stubs.Done) error {
+	if s.inProgress {
+		s.distributor.mutex.Lock()
+		if s.distributor.numOfTurns == s.distributor.currentTurn {
+			reply.Done = true
+		} else {
+			reply.Done = false
+		}
+		s.distributor.mutex.Unlock()
+		return nil
+	} else {
+		return errors.New("no distributor existing")
+	}
+}
+
 func main() {
 	// parse compiler flags
 	port := flag.String("this", "8030", "Port for this service to listen on")
