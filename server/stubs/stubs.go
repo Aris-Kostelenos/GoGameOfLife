@@ -34,15 +34,15 @@ type StartArgs struct {
 	Threads int
 	Height  int
 	Width   int
-	World   string
+	World   [][]uint8
 }
 
 // Default args/reply for all methods
 type Default struct{}
 
-//World contains world encoded in string format
+//World contains world encoded in [][]uint8 format
 type World struct {
-	World  string
+	World  [][]uint8
 	Height int
 	Width  int
 	Turn   int

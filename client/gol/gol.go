@@ -66,14 +66,14 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
 	// start the game of life simulation on the server
 
-	stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
+	//stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
 
 	args := stubs.StartArgs{
 		Turns:   p.Turns,
 		Threads: p.Threads,
 		Height:  p.ImageHeight,
 		Width:   p.ImageWidth,
-		World:   stringWorld,
+		World:   world,
 	}
 
 	def := new(stubs.Default)
