@@ -54,7 +54,7 @@ func (w *worker) calculateNextState(turn int) {
 			live += int((*w.prevWorld)[bottom][left]) / 255
 			live += int((*w.prevWorld)[bottom][right]) / 255
 
-			// determine the cell's fate
+			// determine if the cell is worthy
 			if (*w.prevWorld)[row][col] == LIVE {
 				if live == 2 || live == 3 {
 					(*w.nextWorld)[row][col] = LIVE
