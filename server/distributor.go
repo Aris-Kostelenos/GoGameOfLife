@@ -85,13 +85,17 @@ func (d *Distributor) run() {
 	fmt.Println("turn:", d.currentTurn)
 	fmt.Println("total turns:", d.numOfTurns)
 	fmt.Println("quit", d.quit)
+	//fmt.Println("height ", d.imageHeight)
+	//fmt.Println("Width ", d.imageWidth)
+	//fmt.Println("prevWorld height", len(d.prevWorld))
+	//fmt.Println("prevWorld width", len(d.prevWorld[0]))
 	for d.currentTurn = 0; d.currentTurn < d.numOfTurns && !d.quit; d.currentTurn++ {
-		fmt.Println("a")
+		//fmt.Println("a")
 		// wait for all workers to complete this turn
 		for _, w := range d.workers {
 			w.space.Wait()
 		}
-		fmt.Println("b")
+		//fmt.Println("b")
 		// swap the previous and next grids
 		d.mutex.Lock()
 		temp := d.prevWorld
@@ -99,24 +103,24 @@ func (d *Distributor) run() {
 		d.nextWorld = temp
 		d.mutex.Unlock()
 
-		fmt.Println("c")
-
-		switch {
-		case <-d.paused:
-			fmt.Println("paused")
-			// pause the workers
-			<-d.paused
-			// resume the workers
-		default:
-			fmt.Println("not paused")
-		}
-
-		fmt.Println("d")
+		//fmt.Println("c")
+		/*
+			switch {
+			case <-d.paused:
+				fmt.Println("paused")
+				// pause the workers
+				<-d.paused
+				// resume the workers
+			default:
+				fmt.Println("not paused")
+			}
+		*/
+		//fmt.Println("d")
 		// order the workers to start the next turn and notify the ticker
 		for i := 0; i < d.threads && d.quit == false; i++ {
 			d.workers[i].work.Post()
 		}
-		fmt.Println("e")
+		//fmt.Println("e")
 	}
 	fmt.Println("done")
 	// notify that the end is complete

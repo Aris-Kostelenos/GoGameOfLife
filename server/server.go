@@ -19,6 +19,7 @@ type Server struct {
 }
 
 // StartGoL16 starts processing a 16x16 Game of Life simulation
+/*
 func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
 	fmt.Println("starting new GoL16")
 	if s.inProgress {
@@ -47,6 +48,34 @@ func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
 	return nil
 }
 
+*/
+
+//StartGoLGeneric starts processing -ur mom- a world of any size given to it as a string
+func (s *Server) StartGoLGeneric(args stubs.StartGeneric, reply *stubs.Default) error {
+	fmt.Println("starting new GoLGeneric")
+	if s.inProgress {
+		return errors.New("Simulation already in progress")
+	}
+	WorldSlice := decoder(args.Height, args.Width, args.World)
+	s.distributor = Distributor{
+		currentTurn: 0,
+		numOfTurns:  args.Turns,
+		threads:     args.Threads,
+		imageWidth:  args.Width,
+		imageHeight: args.Height,
+		prevWorld:   WorldSlice,
+		paused:      make(chan bool),
+	}
+	go s.distributor.run()
+	s.inProgress = true
+	return nil
+}
+
+// StartGoL16 starts processing a 16x16 Game of Life simulation
+func (s *Server) StartGoL16(args stubs.Start16, reply *stubs.Default) error {
+	return nil
+}
+
 // StartGoL64 starts processing a 64x64 Game of Life simulation
 func (s *Server) StartGoL64(args stubs.Start64, reply *stubs.Default) error {
 	return nil
@@ -57,7 +86,18 @@ func (s *Server) StartGoL512(args stubs.Start512, reply *stubs.Default) error {
 	return nil
 }
 
-// GetWorld16 returns the latest state of a 16x16 world
+// GetWorldGeneric returns the latest state of a world
+func (s *Server) GetWorldGeneric(args stubs.Default, reply *stubs.WorldGeneric) error {
+	s.distributor.mutex.Lock()
+	reply.Turn = s.distributor.currentTurn
+	reply.World = encoder(s.distributor.imageHeight, s.distributor.imageWidth, s.distributor.prevWorld)
+	reply.Height = s.distributor.imageHeight
+	reply.Width = s.distributor.imageWidth
+	s.distributor.mutex.Unlock()
+	return nil
+}
+
+/*
 func (s *Server) GetWorld16(args stubs.Default, reply *stubs.World16) error {
 	if s.distributor.imageHeight != 16 || s.distributor.imageWidth != 16 {
 		message := fmt.Sprintf("Simulated world is %vx%v, not 16x16", s.distributor.imageWidth, s.distributor.imageHeight)
@@ -75,6 +115,7 @@ func (s *Server) GetWorld16(args stubs.Default, reply *stubs.World16) error {
 	s.distributor.mutex.Unlock()
 	return nil
 }
+*/
 
 // Connect returns the necessary information for a client to start communicating with the server
 func (s *Server) Connect(args stubs.Default, reply *stubs.Status) error {

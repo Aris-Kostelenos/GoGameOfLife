@@ -12,6 +12,10 @@ var StartGoL64 = "Server.StartGoL64"
 // args = Start512, reply = Default
 var StartGoL512 = "Server.StartGoL512"
 
+//StartGoLGeneric starts a generic Game of Life simulation on the server.
+// args = StartGeneric, reply = Default
+var StartGoLGeneric = "Server.StartGoLGeneric"
+
 // GetWorld16 returns the latest 16x16 world from the server.
 // args = Default, reply = World16
 var GetWorld16 = "Server.GetWorld16"
@@ -23,6 +27,10 @@ var GetWorld64 = "Server.GetWorld64"
 // GetWorld512 returns the latest 512x512 world from the server.
 // args = Default, reply = World512
 var GetWorld512 = "Server.GetWorld512"
+
+//GetWorldGeneric reutnrssda latest nXn world form serverer wbere m is integer greater than zeroooooo.
+//args = Default, reply = WorldGeneric
+var GetWorldGeneric = "Server.GetWorldGeneric"
 
 // Connect establishes a connection between client and server.
 // args = Default, reply = Status
@@ -61,6 +69,15 @@ type Start512 struct {
 	World   [512][512]uint8
 }
 
+//StartGeneric Hey, aris here, this is the thing
+type StartGeneric struct {
+	Turns   int
+	Threads int
+	Height  int
+	Width   int
+	World   string
+}
+
 // Default args/reply for all methods
 type Default struct{}
 
@@ -80,6 +97,14 @@ type World64 struct {
 type World512 struct {
 	World [512][512]uint8
 	Turn  int
+}
+
+//WorldGeneric containis a string that is a world in string format
+type WorldGeneric struct {
+	World  string
+	Height int
+	Width  int
+	Turn   int
 }
 
 // Turn contains the current turn

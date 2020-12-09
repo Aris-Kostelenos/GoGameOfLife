@@ -27,6 +27,17 @@ func makeWorld16(IoInput chan uint8) [16][16]uint8 {
 	return world
 }
 
+func makeWorldGeneric(IoInput chan uint8, height int, width int) [][]uint8 {
+	world := make([][]uint8, height)
+	for row := 0; row < height; row++ {
+		world[row] = make([]uint8, width)
+		for cell := 0; cell < width; cell++ {
+			world[row][cell] = <-IoInput
+		}
+	}
+	return world
+}
+
 // Run starts the processing of Game of Life. It should initialise channels and goroutines.
 func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
@@ -48,7 +59,9 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	// read the data from the file to construct a 2D grid
 	IoCommand <- ioInput
 	IoFilename <- fmt.Sprintf("%vx%v", p.ImageWidth, p.ImageHeight)
-	world := makeWorld16(IoInput)
+
+	//world := makeWorld16(IoInput)
+	world := makeWorldGeneric(IoInput, p.ImageWidth, p.ImageHeight)
 
 	// parse the command-line flags
 	serverAddress := "localhost:8030"
@@ -62,13 +75,27 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	// defer server.Close()
 
 	// start the game of life simulation on the server
-	args := stubs.Start16{
+
+	/*
+		args := stubs.Start16{
+			Turns:   p.Turns,
+			Threads: p.Threads,
+			World:   world,
+		}
+	*/
+
+	stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
+
+	args := stubs.StartGeneric{
 		Turns:   p.Turns,
 		Threads: p.Threads,
-		World:   world,
+		Height:  p.ImageHeight,
+		Width:   p.ImageWidth,
+		World:   stringWorld,
 	}
+
 	reply := new(stubs.ID)
-	err = server.Call(stubs.StartGoL16, args, reply)
+	err = server.Call(stubs.StartGoLGeneric, args, reply)
 	if err != nil {
 		panic(err)
 	}
