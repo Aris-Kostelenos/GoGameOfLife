@@ -16,18 +16,9 @@ type Params struct {
 }
 
 // creates a grid to represent the current state of the world
-func makeWorld16(IoInput chan uint8) [16][16]uint8 {
-	world := [16][16]uint8{}
-	for row := 0; row < 16; row++ {
-		for col := 0; col < 16; col++ {
-			world[row][col] = <-IoInput
-			// c.events <- CellFlipped{0, util.Cell{X: col, Y: row}} // TODO: remove?
-		}
-	}
-	return world
-}
 
-func makeWorldGeneric(IoInput chan uint8, height int, width int) [][]uint8 {
+
+func makeWorld(IoInput chan uint8, height int, width int) [][]uint8 {
 	world := make([][]uint8, height)
 	for row := 0; row < height; row++ {
 		world[row] = make([]uint8, width)
@@ -61,7 +52,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	IoFilename <- fmt.Sprintf("%vx%v", p.ImageWidth, p.ImageHeight)
 
 	//world := makeWorld16(IoInput)
-	world := makeWorldGeneric(IoInput, p.ImageWidth, p.ImageHeight)
+	world := makeWorld(IoInput, p.ImageWidth, p.ImageHeight)
 
 	// parse the command-line flags
 	serverAddress := "localhost:8030"
@@ -86,7 +77,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 
 	stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
 
-	args := stubs.StartGeneric{
+	args := stubs.Start{
 		Turns:   p.Turns,
 		Threads: p.Threads,
 		Height:  p.ImageHeight,
@@ -95,7 +86,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	}
 
 	reply := new(stubs.ID)
-	err = server.Call(stubs.StartGoLGeneric, args, reply)
+	err = server.Call(stubs.StartGoL, args, reply)
 	if err != nil {
 		panic(err)
 	}

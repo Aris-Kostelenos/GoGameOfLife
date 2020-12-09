@@ -35,17 +35,6 @@ func saveWorld(c clientChannels, p Params, world [][]uint8, turn int) {
 	}
 }
 
-func array16ToSlice(world [16][16]uint8) [][]uint8 {
-	sliceWorld := make([][]uint8, 16)
-	for row := 0; row < 16; row++ {
-		sliceWorld[row] = make([]uint8, 16)
-		for col := 0; col < 16; col++ {
-			sliceWorld[row][col] = world[row][col]
-		}
-	}
-	return sliceWorld
-}
-
 func extractAlive(world [][]uint8) []util.Cell {
 	alive := make([]util.Cell, 0)
 	for row := range world {
@@ -58,23 +47,16 @@ func extractAlive(world [][]uint8) []util.Cell {
 	return alive
 }
 
-func (client *Client) getWorldGeneric(server *rpc.Client) (world [][]uint8, turn int) {
+func (client *Client) getWorld(server *rpc.Client) (world [][]uint8, turn int) {
 	args := new(stubs.Default)
-	reply := new(stubs.WorldGeneric)
-	fmt.Println("getting worlf Genreric")
-	err := server.Call(stubs.GetWorldGeneric, args, reply)
-	fmt.Println("err", err)
-	fmt.Println(reply.World)
+	reply := new(stubs.World)
+	// fmt.Println("getting worlf Genreric")
+	err := server.Call(stubs.getWorld, args, reply)
+	if err != nil {
+		fmt.Println("err", err)
+	}
+	// fmt.Println(reply.World)
 	return decoder(reply.Height, reply.Width, reply.World), reply.Turn
-}
-
-func (client *Client) getWorld16(server *rpc.Client) (world [][]uint8, turn int) {
-	args := new(stubs.Default)
-	reply := new(stubs.World16)
-	fmt.Println("getting world16")
-	err := server.Call(stubs.GetWorld16, args, reply)
-	fmt.Println("err:", err)
-	return array16ToSlice(reply.World), reply.Turn
 }
 
 func (client *Client) pauseServer(server *rpc.Client) (turn int) {
@@ -109,7 +91,7 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 		case <-client.t.tick:
 			done := client.getAlive(p, server, c.events)
 			if done {
-				world, turn := client.getWorldGeneric(server)
+				world, turn := client.getWorld(server)
 				saveWorld(c, p, world, turn)
 				alive := extractAlive(world)
 				c.events <- FinalTurnComplete{turn, alive}
@@ -119,7 +101,7 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 		case key := <-c.keyPresses:
 			switch key {
 			case 's':
-				world, turn := client.getWorldGeneric(server)
+				world, turn := client.getWorld(server)
 				saveWorld(c, p, world, turn)
 			case 'q':
 				quit = true
@@ -136,7 +118,7 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 				client.pauseServer(server)
 				fmt.Println("Continuing...")
 			case 'k':
-				world, turn := client.getWorldGeneric(server)
+				world, turn := client.getWorld(server)
 				saveWorld(c, p, world, turn)
 				turn = client.killServer(server)
 				quit = true
