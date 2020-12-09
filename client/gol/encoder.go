@@ -30,7 +30,7 @@ func decoder(height int, width int, s string) [][]uint8 {
 			if s[x] == '0' {
 				world[i][j] = 0
 			} else {
-				world[i][j] = 1
+				world[i][j] = 255
 			}
 			x++
 		}

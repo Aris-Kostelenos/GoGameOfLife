@@ -91,9 +91,9 @@ func (s *Server) StartGoL512(args stubs.Start512, reply *stubs.Default) error {
 func (s *Server) GetWorldGeneric(args stubs.Default, reply *stubs.WorldGeneric) error {
 	s.distributor.mutex.Lock()
 	reply.Turn = s.distributor.currentTurn
-	//fmt.Println("hi2:", len(s.distributor.getAliveCells()))
+	fmt.Println("hi2:", len(s.distributor.getAliveCells()))
 	reply.World = encoder(s.distributor.imageHeight, s.distributor.imageWidth, s.distributor.prevWorld)
-	//fmt.Println(reply.World)
+	fmt.Println(reply.World)
 	reply.Height = s.distributor.imageHeight
 	reply.Width = s.distributor.imageWidth
 	s.distributor.mutex.Unlock()

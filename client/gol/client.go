@@ -64,6 +64,7 @@ func (client *Client) getWorldGeneric(server *rpc.Client) (world [][]uint8, turn
 	fmt.Println("getting worlf Genreric")
 	err := server.Call(stubs.GetWorldGeneric, args, reply)
 	fmt.Println("err", err)
+	fmt.Println(reply.World)
 	return decoder(reply.Height, reply.Width, reply.World), reply.Turn
 }
 
