@@ -50,12 +50,10 @@ func extractAlive(world [][]uint8) []util.Cell {
 func (client *Client) getWorld(server *rpc.Client) (world [][]uint8, turn int) {
 	args := new(stubs.Default)
 	reply := new(stubs.World)
-	// fmt.Println("getting worlf Genreric")
-	err := server.Call(stubs.getWorld, args, reply)
+	err := server.Call(stubs.GetWorld, args, reply)
 	if err != nil {
 		fmt.Println("err", err)
 	}
-	// fmt.Println(reply.World)
 	return decoder(reply.Height, reply.Width, reply.World), reply.Turn
 }
 
