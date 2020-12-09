@@ -55,7 +55,8 @@ func (client *Client) getWorld(server *rpc.Client) (world [][]uint8, turn int) {
 	if err != nil {
 		fmt.Println("err", err)
 	}
-	return decoder(reply.Height, reply.Width, reply.World), reply.Turn
+	// fmt.Println(reply.World)
+	return reply.World, reply.Turn
 }
 
 func (client *Client) pauseServer(server *rpc.Client) (turn int) {

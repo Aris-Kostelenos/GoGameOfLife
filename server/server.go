@@ -24,7 +24,7 @@ func (s *Server) StartGoL(args stubs.StartArgs, reply *stubs.Default) error {
 	if s.inProgress {
 		return errors.New("Simulation already in progress")
 	}
-	WorldSlice := decoder(args.Height, args.Width, args.World)
+	WorldSlice := args.World
 	s.distributor = Distributor{
 		currentTurn: 0,
 		numOfTurns:  args.Turns,
@@ -43,7 +43,7 @@ func (s *Server) StartGoL(args stubs.StartArgs, reply *stubs.Default) error {
 func (s *Server) GetWorld(args stubs.Default, reply *stubs.World) error {
 	s.distributor.mutex.Lock()
 	reply.Turn = s.distributor.currentTurn
-	reply.World = encoder(s.distributor.imageHeight, s.distributor.imageWidth, s.distributor.prevWorld)
+	reply.World = s.distributor.prevWorld
 	reply.Height = s.distributor.imageHeight
 	reply.Width = s.distributor.imageWidth
 	s.distributor.mutex.Unlock()
