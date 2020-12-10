@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"server/util"
 	"sync"
 
@@ -76,24 +75,16 @@ func (d *Distributor) getAliveCells() []util.Cell {
 // distributor divides the work between workers and interacts with other goroutines.
 func (d *Distributor) run() {
 
-	fmt.Println("distributor started")
 	// initialise the state
 	d.makeNextWorld()
 	d.makeWorkers()
 
 	// run the game of life
-	fmt.Println("total turns:", d.numOfTurns)
-	//fmt.Println("height ", d.imageHeight)
-	//fmt.Println("Width ", d.imageWidth)
-	//fmt.Println("prevWorld height", len(d.prevWorld))
-	//fmt.Println("prevWorld width", len(d.prevWorld[0]))
 	for d.currentTurn = 0; d.currentTurn < d.numOfTurns && !d.quit; d.currentTurn++ {
-		//fmt.Println("a")
 		// wait for all workers to complete this turn
 		for _, w := range d.workers {
 			w.space.Wait()
 		}
-		//fmt.Println("b")
 		// swap the previous and next grids
 		d.mutex.Lock()
 		temp := d.prevWorld
@@ -101,25 +92,19 @@ func (d *Distributor) run() {
 		d.nextWorld = temp
 		d.mutex.Unlock()
 
-		//fmt.Println("c")
-		/*
-			switch {
-			case <-d.paused:
-				fmt.Println("paused")
-				// pause the workers
-				<-d.paused
-				// resume the workers
-			default:
-				fmt.Println("not paused")
-			}
-		*/
-		//fmt.Println("d")
+		select {
+		case <-d.paused:
+			// pause the workers
+			<-d.paused
+			// resume the workers
+		default:
+			break
+		}
+
 		// order the workers to start the next turn and notify the ticker
 		for i := 0; i < d.threads && d.quit == false; i++ {
 			d.workers[i].work.Post()
 		}
-		//fmt.Println("e")
 	}
-	fmt.Println("done")
 	// notify that the end is complete
 }

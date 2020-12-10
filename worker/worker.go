@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/ChrisGora/semaphore"
-	"uk.ac.bris.cs/gameoflife/util"
+	// "uk.ac.bris.cs/gameoflife/util"
 )
 
 // TODO: this worker.go file is for when we separate the workers
@@ -25,7 +25,7 @@ const LIVE = byte(255)
 const DEAD = byte(0)
 
 // completes a single turn for its strip
-func (w *worker) calculateNextState(turn int) {
+func (w *worker) calculateNextState(turn int, topRow, botRow []uint8) {
 	for row := w.startRow; row <= w.endRow; row++ {
 		for col := 0; col < w.width; col++ {
 			// initialise variables
@@ -37,9 +37,9 @@ func (w *worker) calculateNextState(turn int) {
 
 			// wrap indices if necessary
 			if row == 0 {
-				top = len(*w.prevWorld) - 1
+				top = botRow
 			} else if row == len(*w.prevWorld)-1 {
-				bottom = 0
+				bottom = topRow
 			}
 
 			if col == 0 {

@@ -54,7 +54,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	world := makeWorld(IoInput, p.ImageWidth, p.ImageHeight)
 
 	// parse the command-line flags
-	serverAddress := "localhost:8030"
+	serverAddress := "3.93.81.59:8030"
 	// flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
 
 	// dial the server
@@ -76,18 +76,36 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 		World:   world,
 	}
 
+	// check if a simulation is already running
 	def := new(stubs.Default)
 	status := new(stubs.Status)
 	server.Call(stubs.Connect, def, status)
+
+	startNew := true
+	// kill the running simulation if it exists
 	if status.Running {
-		killReply := new(stubs.Turn)
-		server.Call(stubs.Kill, def, killReply)
+		var response string
+		fmt.Println("A simulation is already running. Do you want to kill it (y) or connect to it? (n)")
+		fmt.Scan(&response)
+		for response != "y" && response != "n" {
+			fmt.Println("Invalid. Enter 'y' or 'n':")
+			fmt.Scanln(&response)
+		}
+		if response == "n" {
+			startNew = false
+		} else {
+			killReply := new(stubs.Turn)
+			server.Call(stubs.Kill, def, killReply)
+		}
 	}
 
-	reply := new(stubs.ID)
-	err = server.Call(stubs.StartGoL, args, reply)
-	if err != nil {
-		panic(err)
+	// start a new simulation
+	if startNew {
+		reply := new(stubs.ID)
+		err = server.Call(stubs.StartGoL, args, reply)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	clientChannels := clientChannels{

@@ -20,7 +20,6 @@ type Server struct {
 
 // StartGoL starts processing a world of any size given to it as a string
 func (s *Server) StartGoL(args stubs.StartArgs, reply *stubs.Default) error {
-	fmt.Println("starting new GoL")
 	if s.inProgress {
 		return errors.New("Simulation already in progress")
 	}
@@ -54,21 +53,20 @@ func (s *Server) GetWorld(args stubs.Default, reply *stubs.World) error {
 func (s *Server) Connect(args stubs.Default, reply *stubs.Status) error {
 	reply.Running = s.inProgress
 	if s.inProgress {
+		s.distributor.mutex.Lock()
 		reply.CurrentTurn = s.distributor.currentTurn
 		reply.NumOfTurns = s.distributor.numOfTurns
 		reply.Width = s.distributor.imageWidth
 		reply.Height = s.distributor.imageHeight
+		s.distributor.mutex.Unlock()
 	}
 	return nil
 }
 
 // Pause starts/stops the server until further notice
 func (s *Server) Pause(args stubs.Default, reply *stubs.Turn) error {
-	fmt.Println("pausing")
-	s.distributor.mutex.Lock()
-	s.distributor.paused <- true
 	reply.Turn = s.distributor.currentTurn
-	s.distributor.mutex.Unlock()
+	s.distributor.paused <- true
 	return nil
 }
 
@@ -96,18 +94,17 @@ func (s *Server) GetNumAlive(args stubs.Default, reply *stubs.Alive) error {
 
 // CheckDone returns true if the server is finished processing the current simulation
 func (s *Server) CheckDone(args stubs.Default, reply *stubs.Done) error {
-	if s.inProgress {
-		s.distributor.mutex.Lock()
-		if s.distributor.numOfTurns == s.distributor.currentTurn {
-			reply.Done = true
-		} else {
-			reply.Done = false
-		}
-		s.distributor.mutex.Unlock()
-		return nil
-	} else {
-		return errors.New("no distributor existing")
+	if !s.inProgress {
+		return errors.New("No simulation is in progress")
 	}
+	s.distributor.mutex.Lock()
+	if s.distributor.numOfTurns == s.distributor.currentTurn {
+		reply.Done = true
+	} else {
+		reply.Done = false
+	}
+	s.distributor.mutex.Unlock()
+	return nil
 }
 
 func main() {

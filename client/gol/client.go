@@ -55,7 +55,6 @@ func (client *Client) getWorld(server *rpc.Client) (world [][]uint8, turn int) {
 	if err != nil {
 		fmt.Println("err", err)
 	}
-	// fmt.Println(reply.World)
 	return reply.World, reply.Turn
 }
 
@@ -76,15 +75,12 @@ func (client *Client) killServer(server *rpc.Client) (turn int) {
 	return reply.Turn
 }
 
-func (client *Client) getAlive(p Params, server *rpc.Client, events chan<- Event) (done bool) {
+func (client *Client) getAlive(p Params, server *rpc.Client, events chan<- Event) (turn int) {
 	args := new(stubs.Default)
 	reply := new(stubs.Alive)
 	server.Call(stubs.GetNumAlive, args, reply)
 	events <- AliveCellsCount{reply.Turn, reply.Num}
-	if reply.Turn >= p.Turns {
-		return true
-	}
-	return false
+	return reply.Turn
 }
 
 func (client *Client) checkDone(server *rpc.Client) (done bool) {
@@ -104,11 +100,12 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 		select {
 		case tick := <-client.t.tick:
 			if tick == true {
-				client.getAlive(p, server, c.events)
+				turn = client.getAlive(p, server, c.events)
 			} else if tick == false {
 				if client.checkDone(server) {
 					client.t.stop <- true
-					world, turn := client.getWorld(server)
+					world, currentTurn := client.getWorld(server)
+					turn = currentTurn
 					saveWorld(c, p, world, turn)
 					alive := extractAlive(world)
 					c.events <- FinalTurnComplete{turn, alive}
@@ -118,7 +115,9 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 		case key := <-c.keyPresses:
 			switch key {
 			case 's':
-				world, turn := client.getWorld(server)
+				fmt.Println("Saving latest world...")
+				world, currentTurn := client.getWorld(server)
+				turn = currentTurn
 				saveWorld(c, p, world, turn)
 			case 'q':
 				client.quit = true
@@ -128,15 +127,17 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 				turn = client.pauseServer(server)
 				fmt.Printf("Paused. %v turns complete\n", turn)
 				// wait for resume keypress
-				var key rune
-				for key != 'p' {
-					key = <-c.keyPresses
+				var nextKey rune
+				for nextKey != 'p' {
+					nextKey = <-c.keyPresses
 				}
 				// tell the server to resume
 				client.pauseServer(server)
 				fmt.Println("Continuing...")
 			case 'k':
-				world, turn := client.getWorld(server)
+				fmt.Println("Shutting down current simulation...")
+				world, currentTurn := client.getWorld(server)
+				turn = currentTurn
 				saveWorld(c, p, world, turn)
 				running = false
 			default:
@@ -170,5 +171,4 @@ func (client *Client) run(p Params, c clientChannels, server *rpc.Client) {
 	c.events <- StateChange{turn, Quitting}
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
-
 }
