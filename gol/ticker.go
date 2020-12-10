@@ -26,7 +26,7 @@ func (t *Ticker) startTicker(events chan<- Event) {
 			turn = value + 1
 		case <-ticker.C:
 			t.mutex.Lock()
-			alive := len(calculateAliveCells(*t.prevWorld))
+			alive := len(getAliveCells(*t.prevWorld))
 			events <- AliveCellsCount{turn, alive}
 			t.mutex.Unlock()
 		default:

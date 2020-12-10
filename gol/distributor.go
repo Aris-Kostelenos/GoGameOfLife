@@ -3,9 +3,8 @@ package gol
 import (
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
+	"github.com/ChrisGora/semaphore"
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
@@ -19,25 +18,7 @@ type distributorChannels struct {
 	keyPresses <-chan rune
 }
 
-type workerParams struct {
-	id              int
-	offset          int
-	imagePartWidth  int
-	imagePartHeight int
-	imageWidth      int
-	imageHeight     int
-	turns           int
-	threads         int
-	prevWorld       *[][]uint8
-	nextWorld       *[][]uint8
-}
-
-type workerChannels struct {
-	events   chan<- Event
-	syncChan []chan int
-	confChan []chan bool
-}
-
+// saves the given world as a pgm file
 func saveWorld(c distributorChannels, p Params, turn int, world [][]uint8) {
 	c.ioCommand <- ioOutput
 	outputFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
@@ -62,6 +43,7 @@ func makePrevWorld(height int, width int, c distributorChannels) [][]uint8 {
 	return prevWorld
 }
 
+// creates a grid to represent the next state of the world
 func makeNextWorld(height int, width int) [][]uint8 {
 	nextWorld := make([][]uint8, height)
 	for row := 0; row < height; row++ {
@@ -70,52 +52,38 @@ func makeNextWorld(height int, width int) [][]uint8 {
 	return nextWorld
 }
 
-func makeWorkers(numOfWorkers int, rowsPerSlice int, extra int, wc workerChannels, wp workerParams) {
-	for i := 0; i < numOfWorkers; i++ {
-		wc.syncChan[i] = make(chan int)
-		wc.confChan[i] = make(chan bool)
+// creates workers and starts their goroutines
+func makeWorkers(p Params, c distributorChannels, prevWorld, nextWorld *[][]uint8) []worker {
+	rowsPerSlice := p.ImageHeight / p.Threads
+	extra := p.ImageHeight % p.Threads
+	startRow := 0
+	workers := make([]worker, p.Threads)
+	for i := 0; i < p.Threads; i++ {
+		// determine the number of rows for this worker
 		workerRows := rowsPerSlice
 		if extra > 0 {
 			workerRows++
 			extra--
 		}
-		wp.id = i
-		wp.imagePartHeight = workerRows
-		go workerGoroutine(wp, wc)
-		wp.offset += workerRows
+		// create the worker
+		w := worker{}
+		w.prevWorld = prevWorld
+		w.nextWorld = nextWorld
+		w.events = c.events
+		w.startRow = startRow
+		w.endRow = startRow + workerRows - 1
+		w.width = p.ImageWidth
+		w.work = semaphore.Init(1, 1)
+		w.space = semaphore.Init(1, 0)
+		go w.processStrip()
+		workers[i] = w
+		// prep for the next iteration
+		startRow = w.endRow + 1
 	}
+	return workers
 }
 
-func writePgmImage(imageHeight int, imageWidth int, world [][]byte, filename string) {
-	_ = os.Mkdir("out", os.ModePerm)
-	_ = os.Chdir("out")
-
-	file, _ := os.Create(filename)
-	//check(ioError)
-	defer file.Close()
-
-	_, _ = file.WriteString("P5\n")
-	//_, _ = file.WriteString("# PGM file writer by pnmmodules (https://github.com/owainkenwayucl/pnmmodules).\n")
-	_, _ = file.WriteString(strconv.Itoa(imageWidth))
-	_, _ = file.WriteString(" ")
-	_, _ = file.WriteString(strconv.Itoa(imageHeight))
-	_, _ = file.WriteString("\n")
-	_, _ = file.WriteString(strconv.Itoa(255))
-	_, _ = file.WriteString("\n")
-
-	for y := 0; y < imageHeight; y++ {
-		for x := 0; x < imageWidth; x++ {
-			_, _ = file.Write([]byte{world[y][x]})
-			//check(ioError)
-		}
-	}
-
-	//ioError = file.Sync()
-	//check(ioError)
-
-	fmt.Println("File", filename, "output done!")
-}
-
+// handles keypresses received from SDL
 func handleKeyPresses(c distributorChannels, p Params, turn int, prevWorld [][]uint8) bool {
 	quit := false
 	select {
@@ -138,38 +106,6 @@ func handleKeyPresses(c distributorChannels, p Params, turn int, prevWorld [][]u
 	return quit
 }
 
-func runGol(p Params, wc workerChannels, c distributorChannels, t *Ticker, prevWorld [][]uint8, nextWorld [][]uint8) int {
-	var turn int
-	quit := false
-	for turn = 0; turn < p.Turns && quit == false; turn++ {
-
-		// wait for all workers to complete this turn
-		for i := 0; i < p.Threads; i++ {
-			x := <-wc.syncChan[i]
-			if x != turn {
-				log.Fatal("Thread out of sync")
-			}
-		}
-		c.events <- TurnComplete{turn}
-
-		// swap the previous and next grids
-		t.mutex.Lock()
-		prevWorld = nextWorld
-		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
-		t.mutex.Unlock()
-
-		// handle key presses
-		quit = handleKeyPresses(c, p, turn, prevWorld)
-
-		// order the workers to start the next turn and notify the ticker
-		for i := 0; i < p.Threads && quit == false; i++ {
-			wc.confChan[i] <- true
-		}
-		t.turns <- turn
-	}
-	return turn
-}
-
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
@@ -181,20 +117,8 @@ func distributor(p Params, c distributorChannels) {
 	prevWorld := makePrevWorld(p.ImageHeight, p.ImageWidth, c)
 	nextWorld := makeNextWorld(p.ImageHeight, p.ImageWidth)
 
-	// make a struct for worker channels
-	wc := workerChannels{}
-	wc.events = c.events
-	wc.syncChan = make([]chan int, p.Threads)
-	wc.confChan = make([]chan bool, p.Threads)
-
-	// wp is defined outside the loop it is passed by value to each worker.
-	wp := workerParams{0, 0, p.ImageWidth, 0, p.ImageWidth, p.ImageHeight, p.Turns, p.Threads, &prevWorld, &nextWorld}
-
-	// determine the number of rows to be allocated to each worker
-	rowsPerSlice := p.ImageHeight / p.Threads
-	extra := p.ImageHeight % p.Threads
-
-	makeWorkers(p.Threads, rowsPerSlice, extra, wc, wp)
+	// create the workers and start them off
+	workers := makeWorkers(p, c, &prevWorld, &nextWorld)
 
 	// create a ticker
 	t := Ticker{}
@@ -204,24 +128,21 @@ func distributor(p Params, c distributorChannels) {
 	go t.startTicker(c.events)
 
 	// run the game of life
-	// turn := runGol(p, wc, c, &t, prevWorld, nextWorld)
 	var turn int
 	quit := false
 	for turn = 0; turn < p.Turns && quit == false; turn++ {
 
 		// wait for all workers to complete this turn
-		for i := 0; i < p.Threads; i++ {
-			x := <-wc.syncChan[i]
-			if x != turn {
-				log.Fatal("Thread out of sync")
-			}
+		for _, w := range workers {
+			w.space.Wait()
 		}
 		c.events <- TurnComplete{turn}
 
 		// swap the previous and next grids
 		t.mutex.Lock()
+		temp := prevWorld
 		prevWorld = nextWorld
-		nextWorld = makeNextWorld(p.ImageHeight, p.ImageWidth)
+		nextWorld = temp
 		t.mutex.Unlock()
 
 		// handle key presses
@@ -229,7 +150,7 @@ func distributor(p Params, c distributorChannels) {
 
 		// order the workers to start the next turn and notify the ticker
 		for i := 0; i < p.Threads && quit == false; i++ {
-			wc.confChan[i] <- true
+			workers[i].work.Post()
 		}
 		t.turns <- turn
 	}
@@ -237,7 +158,7 @@ func distributor(p Params, c distributorChannels) {
 	// end the game of life
 	t.stop <- true
 	saveWorld(c, p, turn, prevWorld)
-	c.events <- FinalTurnComplete{turn, calculateAliveCells(prevWorld)}
+	c.events <- FinalTurnComplete{turn, getAliveCells(prevWorld)}
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
