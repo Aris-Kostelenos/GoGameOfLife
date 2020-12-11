@@ -1,19 +1,17 @@
 package main
 
 import (
-	"server/util"
-
 	"github.com/ChrisGora/semaphore"
 )
 
 type worker struct {
 	prevWorld *[][]uint8
 	nextWorld *[][]uint8
-	startRow int
-	endRow   int
-	width    int
-	work     semaphore.Semaphore
-	space    semaphore.Semaphore
+	startRow  int
+	endRow    int
+	width     int
+	work      semaphore.Semaphore
+	space     semaphore.Semaphore
 }
 
 // LIVE constant
@@ -56,7 +54,7 @@ func (w *worker) calculateNextState(turn int) {
 			live += int((*w.prevWorld)[bottom][left]) / 255
 			live += int((*w.prevWorld)[bottom][right]) / 255
 
-			// determine the cell's fate
+			// determine if the cell is worthy
 			if (*w.prevWorld)[row][col] == LIVE {
 				if live == 2 || live == 3 {
 					(*w.nextWorld)[row][col] = LIVE
@@ -84,14 +82,14 @@ func (w *worker) processStrip() {
 }
 
 // returns a slice of the alive cells in prevWorld
-func getAliveCells(prevWorld [][]uint8) []util.Cell {
-	alive := make([]util.Cell, 0)
-	for row := range prevWorld {
-		for col := range prevWorld[row] {
-			if prevWorld[row][col] == LIVE {
-				alive = append(alive, util.Cell{X: col, Y: row})
-			}
-		}
-	}
-	return alive
-}
+// func getAliveCells(prevWorld [][]uint8) []util.Cell {
+// 	alive := make([]util.Cell, 0)
+// 	for row := range prevWorld {
+// 		for col := range prevWorld[row] {
+// 			if prevWorld[row][col] == LIVE {
+// 				alive = append(alive, util.Cell{X: col, Y: row})
+// 			}
+// 		}
+// 	}
+// 	return alive
+// }
