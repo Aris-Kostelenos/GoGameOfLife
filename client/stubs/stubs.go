@@ -4,8 +4,8 @@ package stubs
 // args = StartArgs, reply = Default
 var StartGoL = "Server.StartGoL"
 
-// GetWorld returns the latest nXn world form server where m is integer greater than zero.
-// args = Default, reply = World
+// GetWorld reutnrs the latest nXn world form server where m is integer greater than zero.
+// args = Default, reply = WorldGeneric
 var GetWorld = "Server.GetWorld"
 
 // Connect establishes a connection between client and server.

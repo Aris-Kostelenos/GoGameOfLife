@@ -115,7 +115,6 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 		case key := <-c.keyPresses:
 			switch key {
 			case 's':
-				fmt.Println("Saving latest world...")
 				world, currentTurn := client.getWorld(server)
 				turn = currentTurn
 				saveWorld(c, p, world, turn)
@@ -135,7 +134,6 @@ func (client *Client) handleEvents(c clientChannels, p Params, server *rpc.Clien
 				client.pauseServer(server)
 				fmt.Println("Continuing...")
 			case 'k':
-				fmt.Println("Shutting down current simulation...")
 				world, currentTurn := client.getWorld(server)
 				turn = currentTurn
 				saveWorld(c, p, world, turn)
