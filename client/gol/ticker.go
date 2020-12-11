@@ -12,7 +12,7 @@ type Ticker struct {
 
 func (t *Ticker) startTicker(events chan<- Event) {
 	ticker := time.NewTicker(2 * time.Second)
-	fastTicker := time.NewTicker(10 * time.Millisecond)
+	fastTicker := time.NewTicker(200 * time.Millisecond)
 	running := true
 	for running {
 		select {

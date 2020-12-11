@@ -54,7 +54,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	world := makeWorld(IoInput, p.ImageWidth, p.ImageHeight)
 
 	// parse the command-line flags
-	serverAddress := "localhost:8030"
+	serverAddress := "3.94.200.76:8030"
 	// flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
 
 	// dial the server

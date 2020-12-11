@@ -80,3 +80,16 @@ func (w *worker) processStrip() {
 		w.space.Post()
 	}
 }
+
+// returns a slice of the alive cells in prevWorld
+// func getAliveCells(prevWorld [][]uint8) []util.Cell {
+// 	alive := make([]util.Cell, 0)
+// 	for row := range prevWorld {
+// 		for col := range prevWorld[row] {
+// 			if prevWorld[row][col] == LIVE {
+// 				alive = append(alive, util.Cell{X: col, Y: row})
+// 			}
+// 		}
+// 	}
+// 	return alive
+// }
