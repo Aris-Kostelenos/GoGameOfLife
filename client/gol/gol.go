@@ -50,23 +50,16 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	IoCommand <- ioInput
 	IoFilename <- fmt.Sprintf("%vx%v", p.ImageWidth, p.ImageHeight)
 
-	//world := makeWorld16(IoInput)
 	world := makeWorld(IoInput, p.ImageWidth, p.ImageHeight)
 
-	// parse the command-line flags
-	serverAddress := "3.94.200.76:8030"
-	// flag.StringVar(&serverAddress, "server", "localhost:8030", "IP:Port string of the server")
-
 	// dial the server
+	serverAddress := "54.210.194.165:8030"
 	server, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
 		panic(err)
 	}
-	// defer server.Close()
 
 	// start the game of life simulation on the server
-
-	//stringWorld := encoder(p.ImageHeight, p.ImageWidth, world)
 
 	args := stubs.StartArgs{
 		Turns:   p.Turns,
@@ -82,7 +75,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	server.Call(stubs.Connect, def, status)
 
 	startNew := true
-	// kill the running simulation if it exists
+	// check if an existing simulation is running
 	if status.Running {
 		var response string
 		fmt.Println("A simulation is already running. Do you want to kill it (y) or connect to it? (n)")
