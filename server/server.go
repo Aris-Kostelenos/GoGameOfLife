@@ -23,6 +23,7 @@ func (s *Server) StartGoL(args stubs.StartArgs, reply *stubs.Default) error {
 	if s.inProgress {
 		return errors.New("Simulation already in progress")
 	}
+	fmt.Println("Starting a GoL simulation")
 	WorldSlice := args.World
 	s.distributor = Distributor{
 		currentTurn: 0,
@@ -51,6 +52,7 @@ func (s *Server) GetWorld(args stubs.Default, reply *stubs.World) error {
 
 // Connect returns the necessary information for a client to start communicating with the server
 func (s *Server) Connect(args stubs.Default, reply *stubs.Status) error {
+	fmt.Println("A client is attempting connection...")
 	reply.Running = s.inProgress
 	if s.inProgress {
 		s.distributor.mutex.Lock()

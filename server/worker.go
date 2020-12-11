@@ -1,16 +1,14 @@
-package server
+package main
 
 import (
-	"github.com/ChrisGora/semaphore"
-	// "uk.ac.bris.cs/gameoflife/util"
-)
+	"server/util"
 
-// TODO: this worker.go file is for when we separate the workers
+	"github.com/ChrisGora/semaphore"
+)
 
 type worker struct {
 	prevWorld *[][]uint8
 	nextWorld *[][]uint8
-	//events    chan<- Event // should workers have a mutex lock around access to events?
 	startRow int
 	endRow   int
 	width    int
@@ -25,7 +23,7 @@ const LIVE = byte(255)
 const DEAD = byte(0)
 
 // completes a single turn for its strip
-func (w *worker) calculateNextState(turn int, topRow, botRow []uint8) {
+func (w *worker) calculateNextState(turn int) {
 	for row := w.startRow; row <= w.endRow; row++ {
 		for col := 0; col < w.width; col++ {
 			// initialise variables
@@ -37,9 +35,9 @@ func (w *worker) calculateNextState(turn int, topRow, botRow []uint8) {
 
 			// wrap indices if necessary
 			if row == 0 {
-				top = botRow
+				top = len(*w.prevWorld) - 1
 			} else if row == len(*w.prevWorld)-1 {
-				bottom = topRow
+				bottom = 0
 			}
 
 			if col == 0 {

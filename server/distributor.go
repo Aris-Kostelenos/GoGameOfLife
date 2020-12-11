@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"server/util"
 	"sync"
 
@@ -106,5 +107,6 @@ func (d *Distributor) run() {
 			d.workers[i].work.Post()
 		}
 	}
+	fmt.Println("distributor completed all turns")
 	// notify that the end is complete
 }
