@@ -101,6 +101,7 @@ func (s *Server) CheckDone(args stubs.Default, reply *stubs.Done) error {
 	}
 	s.distributor.mutex.Lock()
 	if s.distributor.numOfTurns == s.distributor.currentTurn {
+		fmt.Println("server done")
 		reply.Done = true
 	} else {
 		reply.Done = false
