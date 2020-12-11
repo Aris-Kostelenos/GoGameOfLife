@@ -48,32 +48,32 @@ func BenchmarkGoLImageSize16(b *testing.B)   { benchmarkGoL(0, 16, 1, b) }
 func BenchmarkGoLImageSize64(b *testing.B)   { benchmarkGoL(0, 64, 1, b) }
 func BenchmarkGoLImageSize128(b *testing.B)  { benchmarkGoL(0, 128, 1, b) }
 func BenchmarkGoLImageSize256(b *testing.B)  { benchmarkGoL(0, 256, 1, b) }
-func BenchmarkGoLImageSize512(b *testing.B)  { benchmarkGoL(0, 528, 1, b) }
-func BenchmarkGoLImageSize5120(b *testing.B) { benchmarkGoL(0, 5280, 1, b) }
+func BenchmarkGoLImageSize512(b *testing.B)  { benchmarkGoL(0, 512, 1, b) }
+func BenchmarkGoLImageSize5120(b *testing.B) { benchmarkGoL(0, 5120, 1, b) }
 
-func BenchmarkGoLMedium1workers0turns(b *testing.B)    { benchmarkGoL(0, 528, 1, b) }
-func BenchmarkGoLMedium1workers100turns(b *testing.B)  { benchmarkGoL(100, 528, 1, b) }
-func BenchmarkGoLMedium1workers200turns(b *testing.B)  { benchmarkGoL(200, 528, 1, b) }
-func BenchmarkGoLMedium1workers300turns(b *testing.B)  { benchmarkGoL(300, 528, 1, b) }
-func BenchmarkGoLMedium1workers400turns(b *testing.B)  { benchmarkGoL(400, 528, 1, b) }
-func BenchmarkGoLMedium1workers500turns(b *testing.B)  { benchmarkGoL(500, 528, 1, b) }
-func BenchmarkGoLMedium1workers600turns(b *testing.B)  { benchmarkGoL(600, 528, 1, b) }
-func BenchmarkGoLMedium1workers700turns(b *testing.B)  { benchmarkGoL(700, 528, 1, b) }
-func BenchmarkGoLMedium1workers800turns(b *testing.B)  { benchmarkGoL(800, 528, 1, b) }
-func BenchmarkGoLMedium1workers900turns(b *testing.B)  { benchmarkGoL(900, 528, 1, b) }
-func BenchmarkGoLMedium1workers1000turns(b *testing.B) { benchmarkGoL(1000, 528, 1, b) }
+func BenchmarkGoLMedium1workers0turns(b *testing.B)    { benchmarkGoL(0, 512, 1, b) }
+func BenchmarkGoLMedium1workers100turns(b *testing.B)  { benchmarkGoL(100, 512, 1, b) }
+func BenchmarkGoLMedium1workers200turns(b *testing.B)  { benchmarkGoL(200, 512, 1, b) }
+func BenchmarkGoLMedium1workers300turns(b *testing.B)  { benchmarkGoL(300, 512, 1, b) }
+func BenchmarkGoLMedium1workers400turns(b *testing.B)  { benchmarkGoL(400, 512, 1, b) }
+func BenchmarkGoLMedium1workers500turns(b *testing.B)  { benchmarkGoL(500, 512, 1, b) }
+func BenchmarkGoLMedium1workers600turns(b *testing.B)  { benchmarkGoL(600, 512, 1, b) }
+func BenchmarkGoLMedium1workers700turns(b *testing.B)  { benchmarkGoL(700, 512, 1, b) }
+func BenchmarkGoLMedium1workers800turns(b *testing.B)  { benchmarkGoL(800, 512, 1, b) }
+func BenchmarkGoLMedium1workers900turns(b *testing.B)  { benchmarkGoL(900, 512, 1, b) }
+func BenchmarkGoLMedium1workers1000turns(b *testing.B) { benchmarkGoL(1000, 512, 1, b) }
 
-func BenchmarkGoLMedium16workers0turns(b *testing.B)    { benchmarkGoL(0, 528, 16, b) }
-func BenchmarkGoLMedium16workers100turns(b *testing.B)  { benchmarkGoL(100, 528, 16, b) }
-func BenchmarkGoLMedium16workers200turns(b *testing.B)  { benchmarkGoL(200, 528, 16, b) }
-func BenchmarkGoLMedium16workers300turns(b *testing.B)  { benchmarkGoL(300, 528, 16, b) }
-func BenchmarkGoLMedium16workers400turns(b *testing.B)  { benchmarkGoL(400, 528, 16, b) }
-func BenchmarkGoLMedium16workers500turns(b *testing.B)  { benchmarkGoL(500, 528, 16, b) }
-func BenchmarkGoLMedium16workers600turns(b *testing.B)  { benchmarkGoL(600, 528, 16, b) }
-func BenchmarkGoLMedium16workers700turns(b *testing.B)  { benchmarkGoL(700, 528, 16, b) }
-func BenchmarkGoLMedium16workers800turns(b *testing.B)  { benchmarkGoL(800, 528, 16, b) }
-func BenchmarkGoLMedium16workers900turns(b *testing.B)  { benchmarkGoL(900, 528, 16, b) }
-func BenchmarkGoLMedium16workers1000turns(b *testing.B) { benchmarkGoL(1000, 528, 16, b) }
+func BenchmarkGoLMedium16workers0turns(b *testing.B)    { benchmarkGoL(0, 512, 16, b) }
+func BenchmarkGoLMedium16workers100turns(b *testing.B)  { benchmarkGoL(100, 512, 16, b) }
+func BenchmarkGoLMedium16workers200turns(b *testing.B)  { benchmarkGoL(200, 512, 16, b) }
+func BenchmarkGoLMedium16workers300turns(b *testing.B)  { benchmarkGoL(300, 512, 16, b) }
+func BenchmarkGoLMedium16workers400turns(b *testing.B)  { benchmarkGoL(400, 512, 16, b) }
+func BenchmarkGoLMedium16workers500turns(b *testing.B)  { benchmarkGoL(500, 512, 16, b) }
+func BenchmarkGoLMedium16workers600turns(b *testing.B)  { benchmarkGoL(600, 512, 16, b) }
+func BenchmarkGoLMedium16workers700turns(b *testing.B)  { benchmarkGoL(700, 512, 16, b) }
+func BenchmarkGoLMedium16workers800turns(b *testing.B)  { benchmarkGoL(800, 512, 16, b) }
+func BenchmarkGoLMedium16workers900turns(b *testing.B)  { benchmarkGoL(900, 512, 16, b) }
+func BenchmarkGoLMedium16workers1000turns(b *testing.B) { benchmarkGoL(1000, 512, 16, b) }
 
 /*
 func BenchmarkGoLMedium1worker0turn(b *testing.B)  { benchmarkGoL(0, 512, 1, b) }
